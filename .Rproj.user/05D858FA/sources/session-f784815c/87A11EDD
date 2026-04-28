@@ -1,0 +1,26 @@
+{
+    "id": "87A11EDD",
+    "path": "C:/Users/sandr/OneDrive - UAM/Escritorio/OmicsExplorer_2/app/queries/queries_geneViewer.R",
+    "project_path": "app/queries/queries_geneViewer.R",
+    "type": "r_source",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1777287744407.0,
+    "source_on_save": false,
+    "relative_order": 8,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "124,36",
+        "scrollLine": "0"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1777363119,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1777363119230,
+    "read_only": false,
+    "read_only_alternatives": []
+}

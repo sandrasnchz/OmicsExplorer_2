@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src='https://cdn.jsdelivr.net/npm/igv@2.15.4/dist/igv.min.js'></script>
+</head>
+<body>
+
+<div id='igvDiv' style='height:600px;'></div>
+
+<script>
+
+var options = {
+  genome: 'hg19',
+  locus: '1:200000-40000',
+  tracks: [
+
+{
+            name:'Genes',
+            type:'annotation',
+            format:'gtf',
+            url:'coverage/genes_20260427_125156.gtf'
+          },
+
+    {
+      name:'WGS',
+      type:'wig',
+      format:'bigwig',
+      url:'coverage/WGS_20260427_123314.bw',
+      color:'black'
+    },
+
+    {
+     name:'WES',
+      type:'wig',
+      format:'bigwig',
+      url:'coverage/WES_20260427_183910.bw',
+      color:'blue' 
+    },
+
+    {
+      name:'RNA',
+      type:'wig',
+      format:'bigwig',
+      url:'coverage/RNA_20260427_165401.bw',
+      color:'red'
+    }
+
+  ]
+};
+
+igv.createBrowser(document.getElementById('igvDiv'), options);
+
+</script>
+
+</body>
+</html>
