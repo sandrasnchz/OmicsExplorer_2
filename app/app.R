@@ -134,10 +134,13 @@ server <- function(input, output, session){
   # =========================
   # ACTIVE MODULES
   # =========================
+  selected_gene <- reactiveVal(NULL)
+  
+  
   homeServer("home")
   introServer("intro")
-  dataViewerServer("viewer", con)
-  geneViewerServer("gene", con)
+  dataViewerServer("viewer", con, selected_gene)
+  geneViewerServer("gene", con, selected_gene)
   QCviewerServer("qc", con)
   coverageViewerServer("coverage")
   

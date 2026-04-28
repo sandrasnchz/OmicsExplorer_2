@@ -39,46 +39,79 @@ geneViewerUI <- function(id){
 # =====================
 # SERVER
 # =====================
-geneViewerServer <- function(id, con){
+geneViewerServer <- function(id, con, selected_gene){
   moduleServer(id, function(input, output, session){
+    
+    observe({
+      if(!is.null(selected_gene())){
+        updateTextInput(session, "gene", value = selected_gene())
+      }
+    })
+    
+    # =====================
+    # 🔁 SINCRONIZACIÓN INPUT
+    # =====================
+    observe({
+      gene <- selected_gene()
+      
+      if(!is.null(gene) && gene != ""){
+        updateTextInput(session, "gene", value = gene)
+      }
+    })
+    
+    
+    # =====================
+    # 🎯 GENE ACTUAL (CLAVE)
+    # =====================
+    current_gene <- reactive({
+      
+      # prioridad: navegación desde DataViewer
+      if(!is.null(selected_gene()) && selected_gene() != ""){
+        return(selected_gene())
+      }
+      
+      # fallback: input manual
+      if(!is.null(input$gene) && input$gene != ""){
+        return(input$gene)
+      }
+      
+      return(NULL)
+    })
+    
     
     # =====================
     # VARIANTS POR GEN (SQL)
     # =====================
     gene_variants <- reactive({
       
-      req(input$gene)
-      
-      if(nchar(input$gene) < 2){
-        return(NULL)
-      }
+      gene <- current_gene()
+      req(gene)
       
       tryCatch({
-        get_variants_by_gene(con, input$gene)
+        get_variants_by_gene(con, gene)
       }, error = function(e){
         print(e)
         return(NULL)
       })
     })
     
+    
     # =====================
     # INFO GEN (SQL)
     # =====================
     gene_info_filtered <- reactive({
       
-      req(input$gene)
-      
-      if(nchar(input$gene) < 2){
-        return(NULL)
-      }
+      gene <- current_gene()
+      req(gene)
       
       tryCatch({
-        get_gene_info_by_gene(con, input$gene)
+        get_gene_info_by_gene(con, gene)
       }, error = function(e){
         print(e)
         return(NULL)
       })
     })
+    
     
     # =====================
     # SUMMARY
@@ -102,6 +135,7 @@ geneViewerServer <- function(id, con){
       )
     })
     
+    
     # =====================
     # GENE INFO
     # =====================
@@ -119,20 +153,23 @@ geneViewerServer <- function(id, con){
         class = "box",
         tags$h4("Gene information"),
         
-        tags$table(class = "table table-sm",
-                   tags$tr(tags$th("HGNC ID"), tags$td(row$HGNC_ID)),
-                   tags$tr(tags$th("Biotype"), tags$td(row$BIOTYPE)),
-                   tags$tr(tags$th("Gene phenotype"), tags$td(row$GENE_PHENO)),
-                   tags$tr(tags$th("Function"), tags$td(row$Function_description)),
-                   tags$tr(tags$th("Disease"), tags$td(row$Disease_description)),
-                   tags$tr(tags$th("HPO ID"), tags$td(row$HPO_id)),
-                   tags$tr(tags$th("HPO name"), tags$td(row$HPO_name))
+        tags$table(
+          class = "table table-sm",
+          
+          tags$tr(tags$th("HGNC ID"), tags$td(row$HGNC_ID)),
+          tags$tr(tags$th("Biotype"), tags$td(row$BIOTYPE)),
+          tags$tr(tags$th("Gene phenotype"), tags$td(row$GENE_PHENO)),
+          tags$tr(tags$th("Function"), tags$td(row$Function_description)),
+          tags$tr(tags$th("Disease"), tags$td(row$Disease_description)),
+          tags$tr(tags$th("HPO ID"), tags$td(row$HPO_id)),
+          tags$tr(tags$th("HPO name"), tags$td(row$HPO_name))
         )
       )
     })
     
+    
     # =====================
-    # LINKS
+    # LINKS EXTERNOS
     # =====================
     output$external_links <- renderUI({
       
@@ -149,7 +186,7 @@ geneViewerServer <- function(id, con){
       )
       
       omim <- NULL
-      if(!is.null(df_info)){
+      if(!is.null(df_info) && "OMIM_id" %in% colnames(df_info)){
         omim <- unique(df_info$OMIM_id)[1]
       }
       
@@ -167,6 +204,7 @@ geneViewerServer <- function(id, con){
         }
       )
     })
+    
     
     # =====================
     # UCSC

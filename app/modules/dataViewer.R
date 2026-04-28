@@ -13,129 +13,99 @@ dataViewerUI <- function(id){
       
       h2("🔎 | DATA VIEWER"),
       
-      # FILTRO GLOBAL
       textInput(
         ns("gene"),
         "Filter by gene:",
         placeholder = "e.g. DPM1"
       ),
       
-      tabsetPanel(
-        
-        # =====================
-        # VARIANTS
-        # =====================
-        tabPanel("Variants (WES + WGS)",
-                 
-                 br(),
-                 
-                 fluidRow(
-                   
-                   column(3,
-                          sliderInput(ns("af"),
-                                      "Max AF:",
-                                      min = 0,
-                                      max = 0.05,
-                                      value = 0.01,
-                                      step = 0.001)
-                   ),
-                   
-                   column(3,
-                          checkboxGroupInput(
-                            ns("impact"),
-                            "Impact:",
-                            choices = c("HIGH","MODERATE","LOW","MODIFIER"),
-                            selected = c("HIGH","MODERATE")
-                          )
-                   ),
-                   
-                   column(3,
-                          checkboxGroupInput(
-                            ns("source"),
-                            "Source:",
-                            choices = c("WES","WGS","BOTH"),
-                            selected = c("WES","WGS","BOTH")
-                          )
-                   ),
-                   
-                   column(3,
-                          checkboxGroupInput(
-                            ns("inheritance"),
-                            "Inheritance:",
-                            choices = c("de_novo","recessive","dominant","other"),
-                            selected = c("de_novo","recessive","dominant")
-                          )
-                   )
-                 ),
-                 
-                 fluidRow(
-                   
-                   column(4,
-                          selectInput(
-                            ns("consequence"),
-                            "Consequence:",
-                            choices = c("ALL",
-                                        "missense_variant",
-                                        "stop_gained",
-                                        "frameshift_variant",
-                                        "splice_region_variant"),
-                            selected = "ALL"
-                          )
-                   ),
-                   
-                   column(4,
-                          selectInput(
-                            ns("variant_class"),
-                            "Variant class:",
-                            choices = c("ALL","SNV","insertion","deletion"),
-                            selected = "ALL"
-                          )
-                   ),
-                   
-                 ),
-                 
-                 br(),
-                 
-                 DTOutput(ns("variants"))
-        ),
-        
-        # =====================
-        # RNA
-        # =====================
-        tabPanel("RNA Data",
-                 DTOutput(ns("rna"))
-        ),
-        
-        # =====================
-        # DROP
-        # =====================
-        tabPanel("DROP",
-                 
-                 selectInput(
-                   ns("drop_type"),
-                   "Select dataset:",
-                   choices = c(
-                     "Aberrant Expression"="expr",
-                     "Aberrant Splicing"="splicing",
-                     "MAE (Monoallelic Expression)"="mae"
-                   )
-                 ),
-                 
-                 DTOutput(ns("drop"))
-        )
+      tabsetPanel(id = ns("main_tabs"),
+                  
+                  tabPanel("Variants (WES + WGS)",
+                           
+                           br(),
+                           
+                           fluidRow(
+                             column(3,
+                                    sliderInput(ns("af"), "Max AF:",
+                                                min = 0, max = 0.05,
+                                                value = 0.01, step = 0.001)
+                             ),
+                             column(3,
+                                    checkboxGroupInput(ns("impact"), "Impact:",
+                                                       choices = c("HIGH","MODERATE","LOW","MODIFIER"),
+                                                       selected = c("HIGH","MODERATE","LOW","MODIFIER"))
+                             ),
+                             column(3,
+                                    checkboxGroupInput(ns("source"), "Source:",
+                                                       choices = c("WES","WGS","BOTH"),
+                                                       selected = c("WES","WGS","BOTH"))
+                             ),
+                             column(3,
+                                    checkboxGroupInput(ns("inheritance"), "Inheritance:",
+                                                       choices = c("de_novo","recessive","dominant","other"),
+                                                       selected = c("de_novo","recessive","dominant", "other"))
+                             )
+                           ),
+                           
+                           fluidRow(
+                             column(4,
+                                    selectInput(ns("consequence"), "Consequence:",
+                                                choices = c("ALL",
+                                                            "missense_variant",
+                                                            "stop_gained",
+                                                            "frameshift_variant",
+                                                            "splice_region_variant"),
+                                                selected = "ALL")
+                             ),
+                             column(4,
+                                    selectInput(ns("variant_class"), "Variant class:",
+                                                choices = c("ALL","SNV","insertion","deletion"),
+                                                selected = "ALL")
+                             )
+                           ),
+                           
+                           br(),
+                           DTOutput(ns("variants"))
+                  ),
+                  
+                  tabPanel("RNA Data",
+                           DTOutput(ns("rna"))
+                  ),
+                  
+                  tabPanel("DROP",
+                           selectInput(ns("drop_type"),
+                                       "Select dataset:",
+                                       choices = c(
+                                         "Aberrant Expression"="expr",
+                                         "Aberrant Splicing"="splicing",
+                                         "MAE (Monoallelic Expression)"="mae"
+                                       )),
+                           DTOutput(ns("drop"))
+                  )
       )
   )
 }
 
-
 # =====================
 # SERVER
 # =====================
-dataViewerServer <- function(id, con){
+dataViewerServer <- function(id, con, selected_gene){
   moduleServer(id, function(input, output, session){
     
-    # helper NULL-safe
     `%||%` <- function(a, b) if (is.null(a)) b else a
+    
+    navigating <- reactiveVal(FALSE)
+    
+    # =====================
+    # RESET CONTROLADO
+    # =====================
+    observeEvent(input$main_tabs, {
+      if(!navigating()){
+        selected_gene(NULL)
+      }
+      navigating(FALSE)
+    })
     
     # =====================
     # VARIANTS
@@ -147,66 +117,100 @@ dataViewerServer <- function(id, con){
       tryCatch({
         
         df <- get_variants_with_inheritance(con)
+        validate(need(nrow(df) > 0, "No variants loaded"))
         
-        validate(
-          need(nrow(df) > 0, "No variants loaded")
-        )
+        # navegación
+        if(!is.null(selected_gene())){
+          df <- df %>% filter(grepl(selected_gene(), `Gene name`, ignore.case = TRUE))
+        }
         
-        # =====================
-        # FILTROS
-        # =====================
-        
-        # filtro global por gen
+        # filtro manual
         if(nzchar(input$gene)){
-          df <- df %>%
-            filter(grepl(input$gene, `Gene name`, ignore.case = TRUE))
+          df <- df %>% filter(grepl(input$gene, `Gene name`, ignore.case = TRUE))
         }
         
-        # AF
-        df <- df %>%
-          filter(is.na(MAX_AF) | MAX_AF <= input$af)
+        df <- df %>% filter(is.na(MAX_AF) | MAX_AF <= input$af)
+        df <- df %>% filter(IMPACT %in% (input$impact %||% unique(df$IMPACT)))
+        df <- df %>% filter(source %in% (input$source %||% unique(df$source)))
+        df <- df %>% filter(inheritance_type %in% (input$inheritance %||% unique(df$inheritance_type)))
         
-        # impact
-        df <- df %>%
-          filter(IMPACT %in% (input$impact %||% unique(df$IMPACT)))
-        
-        # source
-        df <- df %>%
-          filter(source %in% (input$source %||% unique(df$source)))
-        
-        # inheritance
-        df <- df %>%
-          filter(inheritance_type %in% (input$inheritance %||% unique(df$inheritance_type)))
-        
-        # consequence
-        if(!is.null(input$consequence) && input$consequence != "ALL"){
-          df <- df %>%
-            filter(grepl(input$consequence, Consequence, ignore.case = TRUE))
+        if(input$consequence != "ALL"){
+          df <- df %>% filter(grepl(input$consequence, Consequence, ignore.case = TRUE))
         }
         
-        # variant class
-        if(!is.null(input$variant_class) && input$variant_class != "ALL"){
-          df <- df %>%
-            filter(VARIANT_CLASS == input$variant_class)
+        if(input$variant_class != "ALL"){
+          df <- df %>% filter(VARIANT_CLASS == input$variant_class)
         }
         
-        validate(
-          need(nrow(df) > 0, "No variants match filters")
-        )
+        validate(need(nrow(df) > 0, "No variants match filters"))
         
-        # =====================
-        # OUTPUT
-        # =====================
+        df$gene_hidden <- df$`Gene name`
+        
         datatable(
           df,
           rownames = FALSE,
+          escape = FALSE,
+          selection = "none",
           options = list(
             scrollX = TRUE,
             pageLength = 10,
-            autoWidth = TRUE,
-            lengthMenu = c(10,25,50,100),
-            dom = 'lftip'
-          )
+            dom = 'lftip',
+            columnDefs = list(
+              list(targets = ncol(df)-1, visible = FALSE)
+            )
+          ),
+          
+          callback = JS(sprintf("
+            
+            var format = function(gene) {
+              return '<div style=\"padding:10px\">' +
+                '<b>Explore:</b><br>' +
+                '<button class=\"go-gene\" data-gene=\"'+gene+'\">🧬 Gene Viewer</button><br><br>' +
+                '<button class=\"go-rna\" data-gene=\"'+gene+'\">RNA</button> ' +
+                '<button class=\"go-drop\" data-gene=\"'+gene+'\" data-type=\"expr\">DROP Expr</button> ' +
+                '<button class=\"go-drop\" data-gene=\"'+gene+'\" data-type=\"splicing\">Splicing</button> ' +
+                '<button class=\"go-drop\" data-gene=\"'+gene+'\" data-type=\"mae\">MAE</button>' +
+                '</div>';
+            };
+
+            table.on('click', 'tr', function () {
+              var tr = $(this);
+              var row = table.row(tr);
+              var gene = row.data()[row.data().length - 1];
+              
+              if (row.child.isShown()) {
+                row.child.hide();
+                tr.removeClass('shown');
+              } else {
+                row.child(format(gene)).show();
+                tr.addClass('shown');
+              }
+            });
+
+            table.on('click', '.go-gene', function(e) {
+              e.stopPropagation();
+              var gene = $(this).data('gene');
+              Shiny.setInputValue('%s', {gene: gene, tab: 'gene'}, {priority: 'event'});
+              Shiny.setInputValue('menu', 'gene', {priority: 'event'});
+            });
+
+            table.on('click', '.go-rna', function(e) {
+              e.stopPropagation();
+              var gene = $(this).data('gene');
+              Shiny.setInputValue('%s', {gene: gene, tab: 'rna'}, {priority: 'event'});
+            });
+
+            table.on('click', '.go-drop', function(e) {
+              e.stopPropagation();
+              var gene = $(this).data('gene');
+              var type = $(this).data('type');
+              Shiny.setInputValue('%s', {gene: gene, tab: 'drop', type: type}, {priority: 'event'});
+            });
+
+          ", 
+                                session$ns("nav_click"),
+                                session$ns("nav_click"),
+                                session$ns("nav_click")))
         )
         
       }, error=function(e){
@@ -216,42 +220,101 @@ dataViewerServer <- function(id, con){
     
     
     # =====================
+    # NAVEGACIÓN
+    # =====================
+    observeEvent(input$nav_click, {
+      
+      navigating(TRUE)
+      selected_gene(input$nav_click$gene)
+      
+      if(input$nav_click$tab == "rna"){
+        updateTabsetPanel(session, "main_tabs", selected = "RNA Data")
+        
+      } else if(input$nav_click$tab == "drop"){
+        updateTabsetPanel(session, "main_tabs", selected = "DROP")
+        updateSelectInput(session, "drop_type", selected = input$nav_click$type)
+        
+      } else if(input$nav_click$tab == "variants"){
+        updateTabsetPanel(session, "main_tabs", selected = "Variants (WES + WGS)")
+      }
+    })
+    
+    
+    # =====================
     # RNA
     # =====================
     output$rna <- renderDT({
       
-      req(con)
+      df <- get_rna(con)
+      validate(need(nrow(df) > 0, "No RNA data"))
       
-      tryCatch({
+      if(!is.null(selected_gene())){
+        df <- df %>% filter(grepl(selected_gene(), gene_name, ignore.case = TRUE))
+      }
+      
+      if(nzchar(input$gene)){
+        df <- df %>% filter(grepl(input$gene, gene_name, ignore.case = TRUE))
+      }
+      
+      df$gene_hidden <- df$gene_name
+      
+      datatable(
+        df,
+        escape = FALSE,
+        selection = "none",
+        options = list(
+          scrollX = TRUE,
+          pageLength = 10,
+          columnDefs = list(list(targets = ncol(df)-1, visible = FALSE))
+        ),
         
-        df <- get_rna(con)
-        
-        validate(
-          need(nrow(df) > 0, "No RNA data")
-        )
-        
-        # filtro global por gen
-        if(nzchar(input$gene)){
-          df <- df %>%
-            filter(grepl(input$gene, gene_name, ignore.case = TRUE))
-        }
-        
-        validate(
-          need(nrow(df) > 0, "No RNA matches gene filter")
-        )
-        
-        datatable(
-          df,
-          rownames = FALSE,
-          options = list(
-            scrollX = TRUE,
-            pageLength = 10
-          )
-        )
-        
-      }, error=function(e){
-        datatable(data.frame(Message="No RNA data"))
-      })
+        callback = JS(sprintf("
+          
+          var format = function(gene){
+            return '<div style=\"padding:10px\">' +
+              '<b>Explore:</b><br>' +
+              '<button class=\"go-var\" data-gene=\"'+gene+'\">🔬 Variants</button><br>' +
+              '<button class=\"go-gene\" data-gene=\"'+gene+'\">🧬 Gene Viewer</button><br><br>' +
+              '<button class=\"go-drop\" data-gene=\"'+gene+'\" data-type=\"expr\">DROP Expr</button> ' +
+              '<button class=\"go-drop\" data-gene=\"'+gene+'\" data-type=\"splicing\">Splicing</button> ' +
+              '<button class=\"go-drop\" data-gene=\"'+gene+'\" data-type=\"mae\">MAE</button>' +
+              '</div>';
+          };
+
+          table.on('click','tr',function(){
+            var tr=$(this); var row=table.row(tr);
+            var gene=row.data()[row.data().length-1];
+            
+            if(row.child.isShown()){row.child.hide();tr.removeClass('shown');}
+            else{row.child(format(gene)).show();tr.addClass('shown');}
+          });
+
+          table.on('click','.go-var',function(e){
+            e.stopPropagation();
+            var gene=$(this).data('gene');
+            Shiny.setInputValue('%s',{gene:gene,tab:'variants'},{priority:'event'});
+          });
+
+          table.on('click','.go-gene',function(e){
+            e.stopPropagation();
+            var gene=$(this).data('gene');
+            Shiny.setInputValue('%s',{gene:gene,tab:'gene'},{priority:'event'});
+            Shiny.setInputValue('menu','gene',{priority:'event'});
+          });
+          
+          table.on('click','.go-drop',function(e){
+            e.stopPropagation();
+            var gene=$(this).data('gene');
+            var type=$(this).data('type');
+            Shiny.setInputValue('%s',{gene:gene,tab:'drop',type:type},{priority:'event'});
+          });
+
+        ", 
+                              session$ns("nav_click"),
+                              session$ns("nav_click"),
+                              session$ns("nav_click")
+        ))
+      )
     })
     
     
@@ -260,49 +323,80 @@ dataViewerServer <- function(id, con){
     # =====================
     output$drop <- renderDT({
       
-      req(con)
+      df <- switch(input$drop_type,
+                   "expr" = get_drop_expr(con),
+                   "splicing" = get_drop_splicing(con),
+                   "mae" = get_drop_mae(con))
       
-      tryCatch({
+      validate(need(nrow(df) > 0, "No DROP data"))
+      
+      gene_col <- if("gene_name" %in% colnames(df)) "gene_name" else "hgncSymbol"
+      
+      if(!is.null(selected_gene())){
+        df <- df %>% filter(grepl(selected_gene(), .data[[gene_col]], ignore.case = TRUE))
+      }
+      
+      if(nzchar(input$gene)){
+        df <- df %>% filter(grepl(input$gene, .data[[gene_col]], ignore.case = TRUE))
+      }
+      
+      df$gene_hidden <- df[[gene_col]]
+      
+      datatable(
+        df,
+        escape = FALSE,
+        selection = "none",
+        options = list(
+          scrollX = TRUE,
+          pageLength = 10,
+          columnDefs = list(list(targets = ncol(df)-1, visible = FALSE))
+        ),
         
-        df <- switch(input$drop_type,
-                     "expr" = get_drop_expr(con),
-                     "splicing" = get_drop_splicing(con),
-                     "mae" = get_drop_mae(con)
-        )
-        
-        validate(
-          need(!is.null(df) && nrow(df) > 0, "No DROP data")
-        )
-        
-        # filtro global por gen (adaptable)
-        if(nzchar(input$gene)){
+        callback = JS(sprintf("
           
-          if("gene_name" %in% colnames(df)){
-            df <- df %>% filter(grepl(input$gene, gene_name, ignore.case = TRUE))
+          var format = function(gene){
+            return '<div style=\"padding:10px\">' +
+              '<b>Explore:</b><br>' +
+              '<button class=\"go-var\" data-gene=\"'+gene+'\">🔬 Variants</button><br>' +
+              '<button class=\"go-gene\" data-gene=\"'+gene+'\">🧬 Gene Viewer</button><br><br>' +
+              '<button class=\"go-rna\" data-gene=\"'+gene+'\">RNA</button>' +
+              '</div>';
+          };
+
+          table.on('click','tr',function(){
+            var tr=$(this); var row=table.row(tr);
+            var gene=row.data()[row.data().length-1];
             
-          } else if("hgncSymbol" %in% colnames(df)){
-            df <- df %>% filter(grepl(input$gene, hgncSymbol, ignore.case = TRUE))
-          }
-        }
-        
-        validate(
-          need(nrow(df) > 0, "No DROP matches gene filter")
-        )
-        
-        datatable(
-          df,
-          rownames = FALSE,
-          options = list(
-            scrollX = TRUE,
-            pageLength = 10
-          )
-        )
-        
-      }, error=function(e){
-        datatable(data.frame(Message="No DROP data"))
-      })
+            if(row.child.isShown()){row.child.hide();tr.removeClass('shown');}
+            else{row.child(format(gene)).show();tr.addClass('shown');}
+          });
+
+          table.on('click','.go-var',function(e){
+            e.stopPropagation();
+            var gene=$(this).data('gene');
+            Shiny.setInputValue('%s',{gene:gene,tab:'variants'},{priority:'event'});
+          });
+
+          table.on('click','.go-gene',function(e){
+            e.stopPropagation();
+            var gene=$(this).data('gene');
+            Shiny.setInputValue('%s',{gene:gene,tab:'gene'},{priority:'event'});
+            Shiny.setInputValue('menu','gene',{priority:'event'});
+          });
+          
+          table.on('click','.go-rna',function(e){
+            e.stopPropagation();
+            var gene=$(this).data('gene');
+            Shiny.setInputValue('%s',{gene:gene,tab:'rna'},{priority:'event'});
+          });
+
+        ", 
+                              session$ns("nav_click"),
+                              session$ns("nav_click"),
+                              session$ns("nav_click")
+        ))
+      )
     })
     
   })
 }
-
