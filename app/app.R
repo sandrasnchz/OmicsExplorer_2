@@ -4,8 +4,6 @@ library(shinyjs)
 library(DBI)
 library(duckdb)
 
-APP_DIR <- normalizePath(getwd())
-
 # =========================
 # CONNECTION TO DATABASE
 # =========================
@@ -139,6 +137,7 @@ server <- function(input, output, session){
   
   homeServer("home")
   introServer("intro")
+  loadServer("loadData", con)
   dataViewerServer("viewer", con, selected_gene)
   geneViewerServer("gene", con, selected_gene)
   QCviewerServer("qc", con)

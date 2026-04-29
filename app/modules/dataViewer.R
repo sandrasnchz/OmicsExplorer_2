@@ -66,11 +66,19 @@ dataViewerUI <- function(id){
                            ),
                            
                            br(),
-                           DTOutput(ns("variants"))
+                           withSpinner(
+                             DTOutput(ns("variants")),
+                             type = 4,
+                             color = "#2c7fb8"
+                           )
                   ),
                   
                   tabPanel("RNA Data",
-                           DTOutput(ns("rna"))
+                           withSpinner(
+                             DTOutput(ns("rna")),
+                             type = 4,
+                             color = "#2c7fb8"
+                           )
                   ),
                   
                   tabPanel("DROP",
@@ -81,7 +89,11 @@ dataViewerUI <- function(id){
                                          "Aberrant Splicing"="splicing",
                                          "MAE (Monoallelic Expression)"="mae"
                                        )),
-                           DTOutput(ns("drop"))
+                           withSpinner(
+                             DTOutput(ns("drop")),
+                             type = 4,
+                             color = "#2c7fb8"
+                           )
                   )
       )
   )
@@ -165,11 +177,11 @@ dataViewerServer <- function(id, con, selected_gene){
             var format = function(gene) {
               return '<div style=\"padding:10px\">' +
                 '<b>Explore:</b><br>' +
-                '<button class=\"go-gene\" data-gene=\"'+gene+'\">🧬 Gene Viewer</button><br><br>' +
-                '<button class=\"go-rna\" data-gene=\"'+gene+'\">RNA</button> ' +
-                '<button class=\"go-drop\" data-gene=\"'+gene+'\" data-type=\"expr\">DROP Expr</button> ' +
-                '<button class=\"go-drop\" data-gene=\"'+gene+'\" data-type=\"splicing\">Splicing</button> ' +
-                '<button class=\"go-drop\" data-gene=\"'+gene+'\" data-type=\"mae\">MAE</button>' +
+                '<button class=\"go-gene\" data-gene=\"'+gene+'\">Gene Info</button><br><br>' +
+                '<button class=\"go-rna\" data-gene=\"'+gene+'\">RNA Info</button> ' +
+                '<button class=\"go-drop\" data-gene=\"'+gene+'\" data-type=\"expr\">DROP Expression</button> ' +
+                '<button class=\"go-drop\" data-gene=\"'+gene+'\" data-type=\"splicing\">DROP Splicing</button> ' +
+                '<button class=\"go-drop\" data-gene=\"'+gene+'\" data-type=\"mae\">DROP MAE</button>' +
                 '</div>';
             };
 
@@ -265,7 +277,7 @@ dataViewerServer <- function(id, con, selected_gene){
         options = list(
           scrollX = TRUE,
           pageLength = 10,
-          columnDefs = list(list(targets = ncol(df)-1, visible = FALSE))
+          columnDefs = list(list(targets = ncol(df)-1, visible = TRUE))
         ),
         
         callback = JS(sprintf("
@@ -273,11 +285,11 @@ dataViewerServer <- function(id, con, selected_gene){
           var format = function(gene){
             return '<div style=\"padding:10px\">' +
               '<b>Explore:</b><br>' +
-              '<button class=\"go-var\" data-gene=\"'+gene+'\">🔬 Variants</button><br>' +
-              '<button class=\"go-gene\" data-gene=\"'+gene+'\">🧬 Gene Viewer</button><br><br>' +
-              '<button class=\"go-drop\" data-gene=\"'+gene+'\" data-type=\"expr\">DROP Expr</button> ' +
-              '<button class=\"go-drop\" data-gene=\"'+gene+'\" data-type=\"splicing\">Splicing</button> ' +
-              '<button class=\"go-drop\" data-gene=\"'+gene+'\" data-type=\"mae\">MAE</button>' +
+              '<button class=\"go-var\" data-gene=\"'+gene+'\">Variants Info</button><br>' +
+              '<button class=\"go-gene\" data-gene=\"'+gene+'\">Gene Info</button><br><br>' +
+              '<button class=\"go-drop\" data-gene=\"'+gene+'\" data-type=\"expr\">DROP Expression</button> ' +
+              '<button class=\"go-drop\" data-gene=\"'+gene+'\" data-type=\"splicing\">DROP Splicing</button> ' +
+              '<button class=\"go-drop\" data-gene=\"'+gene+'\" data-type=\"mae\">DROP MAE</button>' +
               '</div>';
           };
 
@@ -357,9 +369,9 @@ dataViewerServer <- function(id, con, selected_gene){
           var format = function(gene){
             return '<div style=\"padding:10px\">' +
               '<b>Explore:</b><br>' +
-              '<button class=\"go-var\" data-gene=\"'+gene+'\">🔬 Variants</button><br>' +
-              '<button class=\"go-gene\" data-gene=\"'+gene+'\">🧬 Gene Viewer</button><br><br>' +
-              '<button class=\"go-rna\" data-gene=\"'+gene+'\">RNA</button>' +
+              '<button class=\"go-var\" data-gene=\"'+gene+'\">Variants Info</button><br>' +
+              '<button class=\"go-gene\" data-gene=\"'+gene+'\">Gene Info</button><br><br>' +
+              '<button class=\"go-rna\" data-gene=\"'+gene+'\">RNA Info</button>' +
               '</div>';
           };
 

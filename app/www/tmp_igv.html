@@ -11,21 +11,16 @@
 
 var options = {
   genome: 'hg19',
-  locus: '1:200000-40000',
+  locus: 'DOHH',
   tracks: [
 
-{
-            name:'Genes',
-            type:'annotation',
-            format:'gtf',
-            url:'coverage/genes_20260427_125156.gtf'
-          },
+
 
     {
       name:'WGS',
       type:'wig',
       format:'bigwig',
-      url:'coverage/WGS_20260427_123314.bw',
+      url:'coverage/WGS_20260429_153215.bw',
       color:'black'
     },
 
@@ -33,7 +28,7 @@ var options = {
      name:'WES',
       type:'wig',
       format:'bigwig',
-      url:'coverage/WES_20260427_183910.bw',
+      url:'coverage/WES_20260429_153123.bw',
       color:'blue' 
     },
 
@@ -41,7 +36,7 @@ var options = {
       name:'RNA',
       type:'wig',
       format:'bigwig',
-      url:'coverage/RNA_20260427_165401.bw',
+      url:'coverage/RNA_20260429_153222.bw',
       color:'red'
     }
 

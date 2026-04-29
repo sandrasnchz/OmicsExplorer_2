@@ -1,4 +1,5 @@
 library(shiny)
+library(shinycssloaders)
 library(DT)
 library(dplyr)
 
@@ -20,19 +21,35 @@ geneViewerUI <- function(id){
       
       br(),
       
-      uiOutput(ns("gene_summary")),
+      withSpinner(
+        uiOutput(ns("gene_summary")),
+        type = 4,
+        color = "#2c7fb8"
+      ),
       
       br(),
       
-      uiOutput(ns("gene_info")),
+      withSpinner(
+        uiOutput(ns("gene_info")),
+        type = 4,
+        color = "#2c7fb8"
+      ),
       
       br(),
       
-      uiOutput(ns("external_links")),
+      withSpinner(
+        uiOutput(ns("external_links")),
+        type = 4,
+        color = "#2c7fb8"
+      ),
       
       br(),
       
-      uiOutput(ns("ucsc_button"))
+      withSpinner(
+        uiOutput(ns("ucsc_button")),
+        type = 4,
+        color = "#2c7fb8"
+      )
   )
 }
 
@@ -42,42 +59,32 @@ geneViewerUI <- function(id){
 geneViewerServer <- function(id, con, selected_gene){
   moduleServer(id, function(input, output, session){
     
+    `%||%` <- function(a, b) if (is.null(a)) b else a
+    
+    # =====================
+    # SINCRONIZACIÓN INPUT
+    # =====================
     observe({
-      if(!is.null(selected_gene())){
+      if(!is.null(selected_gene()) && selected_gene() != ""){
         updateTextInput(session, "gene", value = selected_gene())
       }
     })
     
     # =====================
-    # 🔁 SINCRONIZACIÓN INPUT
-    # =====================
-    observe({
-      gene <- selected_gene()
-      
-      if(!is.null(gene) && gene != ""){
-        updateTextInput(session, "gene", value = gene)
-      }
-    })
-    
-    
-    # =====================
-    # 🎯 GENE ACTUAL (CLAVE)
+    # GENE ACTUAL (REACTIVO BIEN HECHO)
     # =====================
     current_gene <- reactive({
       
-      # prioridad: navegación desde DataViewer
       if(!is.null(selected_gene()) && selected_gene() != ""){
         return(selected_gene())
       }
       
-      # fallback: input manual
       if(!is.null(input$gene) && input$gene != ""){
         return(input$gene)
       }
       
       return(NULL)
     })
-    
     
     # =====================
     # VARIANTS POR GEN (SQL)
@@ -95,7 +102,6 @@ geneViewerServer <- function(id, con, selected_gene){
       })
     })
     
-    
     # =====================
     # INFO GEN (SQL)
     # =====================
@@ -111,7 +117,6 @@ geneViewerServer <- function(id, con, selected_gene){
         return(NULL)
       })
     })
-    
     
     # =====================
     # SUMMARY
@@ -134,7 +139,6 @@ geneViewerServer <- function(id, con, selected_gene){
         tags$p(paste("Number of variants:", n_var))
       )
     })
-    
     
     # =====================
     # GENE INFO
@@ -167,7 +171,6 @@ geneViewerServer <- function(id, con, selected_gene){
       )
     })
     
-    
     # =====================
     # LINKS EXTERNOS
     # =====================
@@ -199,12 +202,11 @@ geneViewerServer <- function(id, con, selected_gene){
         if(!is.null(omim) && !is.na(omim)){
           tags$a("📖 OMIM",
                  href = paste0("https://www.omim.org/entry/", omim),
-                 target="_blank",
+                 target = "_blank",
                  class="btn btn-outline-secondary")
         }
       )
     })
-    
     
     # =====================
     # UCSC

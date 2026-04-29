@@ -130,6 +130,136 @@ loadServer <- function(id, con){
     }
     
     # -------------------------
+    # INFO FILES
+    # -------------------------
+    get_file_metadata <- function(filepath){
+      
+      fname <- basename(filepath)
+      fname_lower <- tolower(fname)
+      
+      # =========================
+      # TYPE (orden IMPORTANTE)
+      # =========================
+      
+      if (grepl("qc", fname_lower)) {
+        type <- "QC"
+        
+      } else if (grepl("^sample_", fname_lower)) {
+        type <- "RNA"
+        
+      } else if (grepl("controls", fname_lower)) {
+        type <- "RNA"
+        
+      } else if (grepl("expression|splicing|mae", fname_lower)) {
+        type <- "DROP"
+        
+      } else if (grepl("\\.bw|\\.gtf", fname_lower)) {
+        type <- "Coverage"
+        
+      } else if (grepl("^wes|^wgs", fname_lower)) {
+        type <- "Variants"
+        
+      } else {
+        type <- "Unknown"
+      }
+      
+      # =========================
+      # SOURCE 
+      # =========================
+      
+      if (grepl("qc", fname_lower)) {
+        
+        if (grepl("wes", fname_lower)) {
+          source <- "WES"
+        } else if (grepl("wgs", fname_lower)) {
+          source <- "WGS"
+        } else {
+          source <- "QC"
+        }
+        
+      } else if (grepl("^sample_", fname_lower)) {
+        
+        # extraer nombre de muestra 
+        sample_name <- sub("^sample_([^_]+).*", "\\1", fname_lower)
+        source <- sample_name
+        
+      } else if (startsWith(fname_lower, "controls")) {
+        source <- "Controls"
+        
+      } else if (startsWith(fname_lower, "wes")) {
+        source <- "WES"
+        
+      } else if (startsWith(fname_lower, "wgs")) {
+        source <- "WGS"
+        
+      } else if (startsWith(fname_lower, "rna")) {
+        source <- "RNA"
+        
+      } else if (startsWith(fname_lower, "expression")) {
+        source <- "Expression"
+        
+      } else if (startsWith(fname_lower, "splicing")) {
+        source <- "Splicing"
+        
+      } else if (startsWith(fname_lower, "mae")) {
+        source <- "MAE"
+        
+      } else {
+        source <- "Unknown"
+      }
+      
+      return(list(type = type, source = source))
+    }
+    
+    # ==========================
+    # LOAD EXISTING FILES
+    # ==========================
+    load_existing_files <- function(){
+      
+      folders <- c(
+        "../data/variants",
+        "../data/rnaseq",
+        "../data/drop",
+        "../data/coverage",
+        "../data/qc"
+      )
+      
+      all_files <- list()
+      
+      for(folder in folders){
+        
+        if(!dir.exists(folder)) next
+        
+        files <- list.files(folder, full.names = TRUE)
+        
+        if(length(files) == 0) next
+        
+        df <- lapply(files, function(f){
+          
+          meta <- get_file_metadata(f)
+          
+          data.frame(
+            id = paste0("existing_", digest::digest(f)),  # ID estable
+            File = basename(f),
+            Type = meta$type,
+            Source = meta$source,
+            path = f,
+            stringsAsFactors = FALSE
+          )
+        })
+        
+        all_files[[length(all_files)+1]] <- bind_rows(df)
+      }
+      
+      if(length(all_files) > 0){
+        rv$files_info <- bind_rows(all_files)
+      }
+    }
+    
+    # Ejecutar al iniciar
+    load_existing_files()
+    
+    # -------------------------
     # GENERIC UPLOAD (TABULAR)
     # -------------------------
     handle_upload <- function(file_input, folder, prefix, type, source){
@@ -143,6 +273,12 @@ loadServer <- function(id, con){
         id <- paste0(prefix, "_", as.integer(Sys.time()))
         
         add_file(id, file_input$name, type, source, path)
+        
+        showNotification(
+          paste("Loaded:", file_input$name),
+          type = "message",
+          duration = 3
+        )
         
       }, error=function(e){
         showNotification(paste("Error:", e$message), type="error")
@@ -214,9 +350,9 @@ loadServer <- function(id, con){
         title="WGS Variants",
         p("VEP annotated variants file."),
         tags$b("Required columns:"),
-        tags$pre("CHROM POS REF ALT SYMBOL Consequence"),
+        tags$pre("ID	CHROM	POS	REF	ALT	FILTER	PARENT1_GT	PARENT1_DP	PARENT1_AD	PARENT1_GQ	PARENT2_GT	PARENT2_DP	PARENT2_AD	PARENT2_GQ	CHILD_GT	CHILD_DP	CHILD_AD	CHILD_GQ	Gene	Location	Allele	Feature ... "),
         tags$b("Example:"),
-        tags$pre("1 123 A G BRCA1 missense_variant"),
+        tags$pre("1_100148710_G_C	1	100148710	G	C	PASS	0/0	21	21,0	51	0/0	19	19,0	51	0/1	25	11,14	99	ENSG00000099260	1:100148711-100148721	-	ENST00000496843	Transcript ... "),
         easyClose=TRUE
       ))
     })
@@ -251,9 +387,9 @@ loadServer <- function(id, con){
         title="DROP - Aberrant Expression",
         p("Gene expression outliers."),
         tags$b("Required columns:"),
-        tags$pre("hgncSymbol geneID pValue padjust zScore l2fc"),
+        tags$pre("hgncSymbol	geneID	sampleID	pValue	padjust	zScore	l2fc	rawcounts	meanRawcounts	normcounts	meanCorrected	theta	aberrant	AberrantBySample	AberrantByGene	padj_rank	foldChange"),
         tags$b("Example:"),
-        tags$pre("BRCA1 ENSG000001 0.001 0.01 -3.5 -2.1"),
+        tags$pre("RPL3P4	ENSG00000232573	ND0013	5.47792538302315E-12	8.59402812907001E-07	-8.5	-1.39	153	3809.48	1146.46	3015.01	92.13	TRUE	3	1	1	0.38"),
         easyClose=TRUE
       ))
     })
@@ -263,9 +399,9 @@ loadServer <- function(id, con){
         title="DROP - Aberrant Splicing",
         p("Splicing outliers."),
         tags$b("Required columns:"),
-        tags$pre("seqnames start end hgncSymbol pValue padjust deltaPsi"),
+        tags$pre("seqnames	start	end	width	strand	sampleID	hgncSymbol	type	pValue	padjust	psiValue	deltaPsi	counts	totalCounts	meanCounts	meanTotalCounts	nonsplitCounts	nonsplitProportion	nonsplitProportion_99quantile	annotatedJunction	pValueGene	padjustGene	potentialImpact	causesFrameshift	UTR_overlap	blacklist"),
         tags$b("Example:"),
-        tags$pre("1 12345 12400 BRCA1 0.002 0.02 -0.3"),
+        tags$pre("IGHG2	jaccard	1.2962E-15	3.2391E-11	0.6	-0.38	58	96	1485.97	1504.89	3	0.03	0.11	both	3.8886E-15	1.11E-11	annotatedIntron_reducedUsage	unlikely	no	TRUE"),
         easyClose=TRUE
       ))
     })
@@ -275,16 +411,16 @@ loadServer <- function(id, con){
         title="DROP - MAE",
         p("Monoallelic expression."),
         tags$b("Required columns:"),
-        tags$pre("gene_name refCount altCount pvalue log2FC"),
+        tags$pre("gene_name	ID	contig	position	variantID	refAllele	altAllele	refCount	altCount	totalCount	pvalue	padj	log2FC	altRatio	AF	AF_afr	AF_amr	AF_eas	AF_nfe	MAX_AF	rare	gene_type	other_names	N_var	cohort_freq	MAE	MAE_ALT"),
         tags$b("Example:"),
-        tags$pre("BRCA1 100 5 0.0001 -4.3"),
+        tags$pre("HLA-A	ND0013_ND0013--ND0013	chr6	29912108	rs2231095	G	C	9	3994	4003	2.49631997819451E-41	6.74440536717421E-39	8.93119194898805	0.998	0.47	0.48	0.44	0.44	0.44	0.48	FALSE	protein_coding		1	0.25	TRUE	TRUE"),
         easyClose=TRUE
       ))
     })
     
     observeEvent(input$info_cov,{
       showModal(modalDialog(
-        title = "Coverage & Gene Annotation",
+        title = "Coverage",
         
         tags$h4("Coverage files (BigWig)"),
         p("Genome-wide coverage files used for visualization in the IGV viewer."),
@@ -295,7 +431,7 @@ loadServer <- function(id, con){
         tags$b("Description:"),
         tags$ul(
           tags$li("Binary, indexed format for fast genomic coverage access"),
-          tags$li("Generated from BAM/CRAM files (e.g. using deepTools bamCoverage)"),
+          tags$li("Generated from BAM/CRAM files"),
           tags$li("Contains coverage signal across the genome (not tabular data)")
         ),
         
@@ -304,7 +440,7 @@ loadServer <- function(id, con){
         
         tags$hr(),
         
-        tags$h4("🧬 Gene annotation (GTF)"),
+        tags$h4("Gene annotation (GTF)"),
         p("Annotation file used to display genes, transcripts and exons in the viewer."),
         
         tags$b("Accepted format:"),
@@ -344,9 +480,9 @@ loadServer <- function(id, con){
         title="Sample QC",
         p("Sequencing quality metrics."),
         tags$b("Required columns:"),
-        tags$pre("SAMPLE MEAN_TARGET_COVERAGE PCT_TARGET_BASES_10X ..."),
+        tags$pre("SAMPLE	MEAN_TARGET_COVERAGE	PCT_USABLE_BASES_ON_TARGET	FOLD_ENRICHMENT	PCT_TARGET_BASES_10X	PCT_TARGET_BASES_20X	PCT_TARGET_BASES_30X	PCT_TARGET_BASES_40X	PCT_TARGET_BASES_50X"),
         tags$b("Example:"),
-        tags$pre("sample1 120 0.98"),
+        tags$pre("ND0013	47.588148	0.316725	61.775056	0.903266	0.790783	0.655728	0.521333	0.401723"),
         easyClose=TRUE
       ))
     })
@@ -384,6 +520,12 @@ loadServer <- function(id, con){
         id <- paste0("rna_", as.integer(Sys.time()))
         
         add_file(id, input$rna_tpm$name, "RNA", sample_name, path)
+        
+        showNotification(
+          paste("Loaded:", input$rna_tpm$name),
+          type = "message",
+          duration = 3
+        )
         
       }, error=function(e){
         showNotification(paste("Error RNA:", e$message), type="error")

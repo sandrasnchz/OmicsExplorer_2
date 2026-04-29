@@ -10,7 +10,7 @@ coverageViewerUI <- function(id){
     
     h2("📈 | Coverage Viewer"),
     
-    textInput(ns("region"), "Find by region or gene name", placeholder = "e.g. 1:1-1000000 or DPM1"),
+    textInput(ns("region"), "Search by region or gene name", placeholder = "e.g. 1:1-1000000 or DPM1"),
     
     actionButton(ns("open"), "Open IGV on the explorer")
   )
@@ -45,7 +45,7 @@ coverageViewerServer <- function(id){
       }
       
       # -------------------------
-      # URLs (mismo puerto → sin CORS)
+      # URLs (mismo puerto)
       # -------------------------
       wes_url <- paste0("coverage/", basename(wes_path))
       wgs_url <- paste0("coverage/", basename(wgs_path))
