@@ -12,7 +12,7 @@ build_parquet_query <- function(files){
 # =====================
 # WES QC
 # =====================
-get_qc_wes <- function(con){
+get_qc_wes <- function(pool){
   
   files <- list.files("../data/qc", pattern="wes_qc", full.names=TRUE)
   
@@ -26,14 +26,14 @@ get_qc_wes <- function(con){
     ")"
   )
   
-  dbGetQuery(con, query)
+  dbGetQuery(pool, query)
 }
 
 
 # =====================
 # WGS QC
 # =====================
-get_qc_wgs <- function(con){
+get_qc_wgs <- function(pool){
   
   files <- list.files("../data/qc", pattern="wgs_qc", full.names=TRUE)
   
@@ -47,14 +47,14 @@ get_qc_wgs <- function(con){
     ")"
   )
   
-  dbGetQuery(con, query)
+  dbGetQuery(pool, query)
 }
 
 
 # =====================
 # COMBINED QC
 # =====================
-get_qc_combined <- function(con){
+get_qc_combined <- function(pool){
   
   wes_files <- list.files("../data/qc", pattern="wes_qc", full.names=TRUE)
   wgs_files <- list.files("../data/qc", pattern="wgs_qc", full.names=TRUE)
@@ -79,5 +79,5 @@ get_qc_combined <- function(con){
   
   final_query <- paste(queries, collapse = " UNION ALL ")
   
-  dbGetQuery(con, final_query)
+  dbGetQuery(pool, final_query)
 }

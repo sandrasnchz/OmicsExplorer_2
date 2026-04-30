@@ -1,9 +1,9 @@
 library(DBI)
 
 # =====================
-# VARIANTS BASE (SIN FILTROS)
+# VARIANTS BASE
 # =====================
-get_variants_with_inheritance <- function(con){
+get_variants_with_inheritance <- function(pool){
   
   files <- list.files("../data/variants", full.names = TRUE)
   
@@ -11,8 +11,8 @@ get_variants_with_inheritance <- function(con){
     stop("No variant files found")
   }
   
-  has_wes <- any(grepl("wes", files))
-  has_wgs <- any(grepl("wgs", files))
+  has_wes <- any(grepl("wes", files, ignore.case = TRUE))
+  has_wgs <- any(grepl("wgs", files, ignore.case = TRUE))
   
   # =====================
   # WES + WGS
@@ -54,30 +54,8 @@ get_variants_with_inheritance <- function(con){
       )
       
       SELECT 
-        
-        ID,
-        CHROM,
-        POS,
-        REF,
-        ALT,
-        FILTER,
-        
-        CHILD_GT_N AS GT,
-        CHILD_DP AS DP,
-        CHILD_AD AS AD,
-        CHILD_GQ AS GQ,
-        
-        UPPER(SYMBOL) AS \"Gene name\",
-        Gene AS \"Gene ID\",
-        
-        Consequence,
-        IMPACT,
-        MAX_AF,
-        VARIANT_CLASS,
-        
-        SIFT_pred,
-        Polyphen2_HVAR_pred,
-        
+        *,
+      
         -- SOURCE
         CASE
           WHEN COUNT(DISTINCT src) OVER (PARTITION BY ID) = 2 THEN 'BOTH'
@@ -115,9 +93,9 @@ get_variants_with_inheritance <- function(con){
     query <- "
       WITH normalized AS (
         SELECT *,
-        REPLACE(CHILD_GT,'|','/') AS CHILD_GT_N,
-        REPLACE(PARENT1_GT,'|','/') AS P1_GT_N,
-        REPLACE(PARENT2_GT,'|','/') AS P2_GT_N
+          REPLACE(CHILD_GT,'|','/') AS CHILD_GT_N,
+          REPLACE(PARENT1_GT,'|','/') AS P1_GT_N,
+          REPLACE(PARENT2_GT,'|','/') AS P2_GT_N
         FROM read_parquet('../data/variants/wes*.parquet')
       )
       
@@ -133,9 +111,9 @@ get_variants_with_inheritance <- function(con){
     query <- "
       WITH normalized AS (
         SELECT *,
-        REPLACE(CHILD_GT,'|','/') AS CHILD_GT_N,
-        REPLACE(PARENT1_GT,'|','/') AS P1_GT_N,
-        REPLACE(PARENT2_GT,'|','/') AS P2_GT_N
+          REPLACE(CHILD_GT,'|','/') AS CHILD_GT_N,
+          REPLACE(PARENT1_GT,'|','/') AS P1_GT_N,
+          REPLACE(PARENT2_GT,'|','/') AS P2_GT_N
         FROM read_parquet('../data/variants/wgs*.parquet')
       )
       
@@ -147,54 +125,16 @@ get_variants_with_inheritance <- function(con){
     "
   }
   
-  dbGetQuery(con, query)
-}
-
-
-# =====================
-# 🚀 VARIANTS FILTRADOS (NUEVO)
-# =====================
-get_variants_filtered <- function(con,
-                                  gene = NULL,
-                                  af = 0.01,
-                                  impact = NULL,
-                                  source = NULL,
-                                  inheritance = NULL){
+  df <- dbGetQuery(pool, query)
   
-  base <- "SELECT * FROM ("
-  
-  query_main <- get_variants_with_inheritance_sql()
-  
-  query <- paste0(base, query_main, ") WHERE 1=1")
-  
-  if(!is.null(gene) && gene != ""){
-    query <- paste0(query, " AND LOWER(\"Gene name\") LIKE LOWER('%", gene, "%')")
-  }
-  
-  if(!is.null(af)){
-    query <- paste0(query, " AND (MAX_AF IS NULL OR MAX_AF <= ", af, ")")
-  }
-  
-  if(!is.null(impact)){
-    query <- paste0(query, " AND IMPACT IN ('", paste(impact, collapse="','"), "')")
-  }
-  
-  if(!is.null(source)){
-    query <- paste0(query, " AND source IN ('", paste(source, collapse="','"), "')")
-  }
-  
-  if(!is.null(inheritance)){
-    query <- paste0(query, " AND inheritance_type IN ('", paste(inheritance, collapse="','"), "')")
-  }
-  
-  dbGetQuery(con, query)
+  return(df)
 }
 
 
 # =====================
 # RNA
 # =====================
-get_rna <- function(con){
+get_rna <- function(pool){
   
   files_sample <- list.files("../data/rnaseq", pattern="sample_", full.names=TRUE)
   files_ctrl   <- list.files("../data/rnaseq", pattern="controls", full.names=TRUE)
@@ -203,48 +143,51 @@ get_rna <- function(con){
     stop("No RNA sample data")
   }
   
-  # SIN CONTROLES
   if(length(files_ctrl) == 0){
     
-    return(dbGetQuery(con, "
+    df <- dbGetQuery(pool, "
       SELECT 
         gene_id,
         gene_name,
         tpm AS \"gene tpm\"
       FROM read_parquet('../data/rnaseq/sample_*.parquet')
-    "))
+    ")
+    
+  } else {
+    
+    df <- dbGetQuery(pool, "
+      SELECT 
+        r.gene_id,
+        r.gene_name,
+        r.tpm AS \"gene tpm\",
+        c.max_TPM,
+        c.min_TPM,
+        c.mean_TPM,
+        c.median_TPM
+      FROM read_parquet('../data/rnaseq/sample_*.parquet') r
+      LEFT JOIN read_parquet('../data/rnaseq/controls*.parquet') c
+      USING(gene_id)
+    ")
   }
   
-  # CON CONTROLES
-  dbGetQuery(con, "
-    SELECT 
-      r.gene_id,
-      r.gene_name,
-      r.tpm AS \"gene tpm\",
-      
-      c.max_TPM,
-      c.min_TPM,
-      c.mean_TPM,
-      c.median_TPM
-      
-    FROM read_parquet('../data/rnaseq/sample_*.parquet') r
-    LEFT JOIN read_parquet('../data/rnaseq/controls*.parquet') c
-    USING(gene_id)
-  ")
+  return(df)
 }
 
 
 # =====================
 # DROP
 # =====================
-get_drop_expr <- function(con){
-  dbGetQuery(con, "SELECT * FROM read_parquet('../data/drop/expression*.parquet')")
+get_drop_expr <- function(pool){
+  df <- dbGetQuery(pool, "SELECT * FROM read_parquet('../data/drop/expression*.parquet')")
+  return(df)
 }
 
-get_drop_splicing <- function(con){
-  dbGetQuery(con, "SELECT * FROM read_parquet('../data/drop/splicing*.parquet')")
+get_drop_splicing <- function(pool){
+  df <- dbGetQuery(pool, "SELECT * FROM read_parquet('../data/drop/splicing*.parquet')")
+  return(df)
 }
 
-get_drop_mae <- function(con){
-  dbGetQuery(con, "SELECT * FROM read_parquet('../data/drop/mae*.parquet')")
+get_drop_mae <- function(pool){
+  df <- dbGetQuery(pool, "SELECT * FROM read_parquet('../data/drop/mae*.parquet')")
+  return(df)
 }

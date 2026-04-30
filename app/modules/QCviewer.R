@@ -3,6 +3,7 @@ library(ggplot2)
 library(dplyr)
 library(DT)
 library(tidyr)
+library(plotly)
 
 # =====================
 # UI
@@ -16,12 +17,12 @@ QCviewerUI <- function(id){
       
       div(class="box",
           h3("Mean Coverage"),
-          plotOutput(ns("mean_cov_plot"))
+          plotlyOutput(ns("mean_cov_plot"))
       ),
       
       div(class="box",
           h3("Coverage ≥20X"),
-          plotOutput(ns("cov20_plot"))
+          plotlyOutput(ns("cov20_plot"))
       ),
       
       div(class="box",
@@ -39,7 +40,7 @@ QCviewerUI <- function(id){
 # =====================
 # SERVER
 # =====================
-QCviewerServer <- function(id, con){
+QCviewerServer <- function(id, pool){
   moduleServer(id, function(input, output, session){
     
     # =====================
@@ -47,7 +48,7 @@ QCviewerServer <- function(id, con){
     # =====================
     wes <- reactive({
       tryCatch({
-        get_qc_wes(con)
+        get_qc_wes(pool)
       }, error=function(e){
         NULL
       })
@@ -55,7 +56,7 @@ QCviewerServer <- function(id, con){
     
     wgs <- reactive({
       tryCatch({
-        get_qc_wgs(con)
+        get_qc_wgs(pool)
       }, error=function(e){
         NULL
       })
@@ -64,7 +65,7 @@ QCviewerServer <- function(id, con){
     combined <- reactive({
       
       tryCatch({
-        get_qc_combined(con)
+        get_qc_combined(pool)
       }, error=function(e){
         NULL
       })
@@ -74,7 +75,7 @@ QCviewerServer <- function(id, con){
     # =====================
     # MEAN COVERAGE
     # =====================
-    output$mean_cov_plot <- renderPlot({
+    output$mean_cov_plot <- renderPlotly({
       
       df <- combined()
       
@@ -82,18 +83,30 @@ QCviewerServer <- function(id, con){
         need(!is.null(df), "No QC data loaded")
       )
       
-      ggplot(df, aes(x = SAMPLE, y = MEAN_TARGET_COVERAGE, fill = type)) +
+      p <- ggplot(df, aes(
+        x = SAMPLE, 
+        y = MEAN_TARGET_COVERAGE, 
+        fill = type,
+        text = paste0(
+          "Sample: ", SAMPLE,
+          "<br>Type: ", type,
+          "<br>Mean coverage: ", round(MEAN_TARGET_COVERAGE, 2)
+        )
+      )) +
         geom_bar(stat = "identity", position = "dodge") +
         geom_hline(yintercept = 30, linetype = "dashed", color = "red") +
+        scale_fill_manual(values = c("#2c7fb8", "#8b1e5b")) +
         theme_minimal() +
         labs(y = "Mean Coverage", x = "Sample")
+      
+      ggplotly(p, tooltip = "text") %>%
+        layout(legend = list(orientation = "h"))
     })
-    
     
     # =====================
     # COVERAGE ≥20X
     # =====================
-    output$cov20_plot <- renderPlot({
+    output$cov20_plot <- renderPlotly({
       
       df <- combined()
       
@@ -101,13 +114,25 @@ QCviewerServer <- function(id, con){
         need(!is.null(df), "No QC data loaded")
       )
       
-      ggplot(df, aes(x = SAMPLE, y = PCT_TARGET_BASES_20X, fill = type)) +
+      p <- ggplot(df, aes(
+        x = SAMPLE, 
+        y = PCT_TARGET_BASES_20X, 
+        fill = type,
+        text = paste0(
+          "Sample: ", SAMPLE,
+          "<br>Type: ", type,
+          "<br>% ≥20X: ", round(PCT_TARGET_BASES_20X, 3)
+        )
+      )) +
         geom_bar(stat = "identity", position = "dodge") +
         geom_hline(yintercept = 0.8, linetype = "dashed", color = "red") +
+        scale_fill_manual(values = c("#2c7fb8", "#8b1e5b")) +
         theme_minimal() +
         labs(y = "% Bases ≥20X", x = "Sample")
+      
+      ggplotly(p, tooltip = "text") %>%
+        layout(legend = list(orientation = "h"))
     })
-    
     
     # =====================
     # TABLE WES

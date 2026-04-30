@@ -8,7 +8,7 @@ coverageViewerUI <- function(id){
   
   tagList(
     
-    h2("📈 | Coverage Viewer"),
+    h2("📈 | COVERGAGE VIEWER"),
     
     textInput(ns("region"), "Search by region or gene name", placeholder = "e.g. 1:1-1000000 or DPM1"),
     

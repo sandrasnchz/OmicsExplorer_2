@@ -33,9 +33,9 @@ loadUI <- function(id){
       
       h2("📥 | LOAD DATA"),
       
+      div(class="section-title-big", "Upload data"),
+      
       div(class="upload-box",
-          
-          div(class="section-title-big", "Upload data"),
           
           div(style="display:flex; gap:30px; justify-content:center; flex-wrap:wrap;",
               
@@ -79,7 +79,7 @@ loadUI <- function(id){
       ),
       
       div(class="table-box",
-          DTOutput(ns("table"))
+          withSpinner(DTOutput(ns("table")))
       )
   )
 }
@@ -87,7 +87,7 @@ loadUI <- function(id){
 # =====================
 # SERVER
 # =====================
-loadServer <- function(id, con){
+loadServer <- function(id){
   moduleServer(id, function(input, output, session){
     
     # -------------------------
@@ -137,10 +137,6 @@ loadServer <- function(id, con){
       fname <- basename(filepath)
       fname_lower <- tolower(fname)
       
-      # =========================
-      # TYPE (orden IMPORTANTE)
-      # =========================
-      
       if (grepl("qc", fname_lower)) {
         type <- "QC"
         
@@ -163,9 +159,9 @@ loadServer <- function(id, con){
         type <- "Unknown"
       }
       
-      # =========================
+      # -------------------------
       # SOURCE 
-      # =========================
+      # -------------------------
       
       if (grepl("qc", fname_lower)) {
         
@@ -239,7 +235,7 @@ loadServer <- function(id, con){
           meta <- get_file_metadata(f)
           
           data.frame(
-            id = paste0("existing_", digest::digest(f)),  # ID estable
+            id = paste0("existing_", digest::digest(f)),
             File = basename(f),
             Type = meta$type,
             Source = meta$source,
@@ -338,9 +334,9 @@ loadServer <- function(id, con){
         title="WES Variants",
         p("VEP annotated variants file."),
         tags$b("Required columns:"),
-        tags$pre("CHROM POS REF ALT SYMBOL Consequence"),
+        tags$pre("ID	CHROM	POS	REF	ALT	FILTER	PARENT1_GT	PARENT1_DP	PARENT1_AD	PARENT1_GQ	PARENT2_GT	PARENT2_DP	PARENT2_AD	PARENT2_GQ	CHILD_GT	CHILD_DP	CHILD_AD	CHILD_GQ	Gene	Location	Allele	Feature ... "),
         tags$b("Example:"),
-        tags$pre("1 123 A G BRCA1 missense_variant"),
+        tags$pre("1_100148710_G_C	1	100148710	G	C	PASS	0/0	21	21,0	51	0/0	19	19,0	51	0/1	25	11,14	99	ENSG00000099260	1:100148711-100148721	-	ENST00000496843	Transcript ... "),
         easyClose=TRUE
       ))
     })
@@ -599,27 +595,49 @@ loadServer <- function(id, con){
     output$table <- renderDT({
       
       if(nrow(rv$files_info)==0){
-        return(datatable(data.frame(Message="No datasets loaded")))
+        return(datatable(
+          data.frame(Message="No datasets loaded yet"),
+          options = list(dom = 't'),
+          rownames = FALSE
+        ))
       }
       
       df <- rv$files_info
       
+      # Botón delete más bonito (icono + clase)
       df$Action <- paste0(
-        '<button class="btn-delete" data-id="', df$id, '">🗑️</button>'
+        '<button class="btn-delete" data-id="', df$id, '">
+      <i class="fa fa-trash"></i>
+    </button>'
       )
       
       datatable(
         df[, c("File","Type","Source","Action")],
+        rownames = FALSE,
         escape = FALSE,
         selection = "none",
-        options = list(pageLength = 5),
+        class = "compact stripe",
+        
+        options = list(
+          pageLength = 5,
+          autoWidth = TRUE,
+          
+          # Layout más limpio
+          dom = '<"top"lf>rt<"bottom"ip>',
+          
+          columnDefs = list(
+            list(orderable = FALSE, targets = 3),
+            list(className = 'dt-center', targets = 3)
+          )
+        ),
         
         callback = JS(sprintf("
-          table.on('click', '.btn-delete', function() {
-            var id = $(this).data('id');
-            Shiny.setInputValue('%s', id, {priority: 'event'});
-          });
-        ", session$ns("delete_row")))
+      table.on('click', '.btn-delete', function(e) {
+        e.stopPropagation();
+        var id = $(this).data('id');
+        Shiny.setInputValue('%s', id, {priority: 'event'});
+      });
+    ", session$ns("delete_row")))
       )
     })
   })

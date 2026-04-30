@@ -3,7 +3,7 @@ library(DBI)
 # =====================
 # VARIANTS POR GEN (DINÁMICO)
 # =====================
-get_variants_by_gene <- function(con, gene){
+get_variants_by_gene <- function(pool, gene){
   
   if(is.null(gene) || gene == ""){
     return(data.frame())
@@ -84,14 +84,14 @@ get_variants_by_gene <- function(con, gene){
     ")
   }
   
-  dbGetQuery(con, query)
+  dbGetQuery(pool, query)
 }
 
 
 # =====================
 # INFO DEL GEN
 # =====================
-get_gene_info_by_gene <- function(con, gene){
+get_gene_info_by_gene <- function(pool, gene){
   
   if(is.null(gene) || gene == ""){
     return(data.frame())
@@ -117,16 +117,16 @@ get_gene_info_by_gene <- function(con, gene){
     
   ")
   
-  dbGetQuery(con, query)
+  dbGetQuery(pool, query)
 }
 
 
 # =====================
 # LISTA DE GENES (para autocomplete)
 # =====================
-get_all_genes <- function(con){
+get_all_genes <- function(pool){
   
-  dbGetQuery(con, "
+  dbGetQuery(pool, "
     SELECT DISTINCT UPPER(SYMBOL) AS gene
     FROM read_parquet('../data/variants/*.parquet')
     ORDER BY gene

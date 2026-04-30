@@ -56,7 +56,7 @@ geneViewerUI <- function(id){
 # =====================
 # SERVER
 # =====================
-geneViewerServer <- function(id, con, selected_gene){
+geneViewerServer <- function(id, pool, selected_gene){
   moduleServer(id, function(input, output, session){
     
     `%||%` <- function(a, b) if (is.null(a)) b else a
@@ -95,7 +95,7 @@ geneViewerServer <- function(id, con, selected_gene){
       req(gene)
       
       tryCatch({
-        get_variants_by_gene(con, gene)
+        get_variants_by_gene(pool, gene)
       }, error = function(e){
         print(e)
         return(NULL)
@@ -111,7 +111,7 @@ geneViewerServer <- function(id, con, selected_gene){
       req(gene)
       
       tryCatch({
-        get_gene_info_by_gene(con, gene)
+        get_gene_info_by_gene(pool, gene)
       }, error = function(e){
         print(e)
         return(NULL)

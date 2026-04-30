@@ -3,13 +3,14 @@ options(shiny.maxRequestSize = 20000 * 1024^2)
 library(shinyjs)
 library(DBI)
 library(duckdb)
+library(pool)
 
 # =========================
 # CONNECTION TO DATABASE
 # =========================
-con <- dbConnect(
-  duckdb(),
-  normalizePath("../db/genomic.duckdb")
+pool <- dbPool(
+  drv = duckdb::duckdb(),
+  dbdir = normalizePath("../db/genomic.duckdb")
 )
 
 # =========================
@@ -32,7 +33,7 @@ source("modules/QCviewer.R")
 source("modules/coverageViewer.R")
 
 # =========================
-# SERVIR COVERAGE DESDE SHINY (SIN CORS)
+# SERVIR COVERAGE DESDE SHINY
 # =========================
 addResourcePath(
   "coverage",
@@ -66,6 +67,9 @@ ui <- fluidPage(
       
       # SIDEBAR
       div(class="sidebar",
+          
+          div(class="logo-container",
+              img(src = "logo1.png", class = "logo-img")),
           
           div(id="btn_home", class="menu-item active",
               onclick="changePage('home')", "🏠 Home"),
@@ -133,21 +137,20 @@ server <- function(input, output, session){
   # ACTIVE MODULES
   # =========================
   selected_gene <- reactiveVal(NULL)
-  
-  
+  # --------------------------------
   homeServer("home")
   introServer("intro")
-  loadServer("loadData", con)
-  dataViewerServer("viewer", con, selected_gene)
-  geneViewerServer("gene", con, selected_gene)
-  QCviewerServer("qc", con)
+  loadServer("loadData")
+  dataViewerServer("viewer", pool, selected_gene)
+  geneViewerServer("gene", pool, selected_gene)
+  QCviewerServer("qc", pool)
   coverageViewerServer("coverage")
   
   # =========================
   # CLOSE DB PROPERLY
   # =========================
   session$onSessionEnded(function(){
-    dbDisconnect(con, shutdown = TRUE)
+    poolClose(pool)
   })
 }
 

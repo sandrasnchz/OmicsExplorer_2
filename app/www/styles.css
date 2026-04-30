@@ -63,9 +63,11 @@ body {
   height: 100vh;
 }
 
-.content {
-  max-width: 1100px;
-  margin: auto;
+.content h2 {
+  font-size: 26px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  display: inline-block;
 }
 
 /* ========================= */
@@ -166,18 +168,29 @@ body {
   padding: 10px 25px;
   border-radius: 25px;
   font-weight: 600;
+  display: block;
+  width: fit-content;
+  margin: 0 auto;
 }
 
 /* INPUTS */
 
-input[type="text"] {
-  width: 300px;
-  margin: 0 auto;
-  display: block;
-  border-radius: 20px;
-  padding: 10px 15px;
-  border: none;
-  background: #eeeeee;
+input[type="file"] {
+  border-radius: 10px;
+  background: #fafafa;
+  padding: 6px;
+  border: 1px solid #ddd;
+}
+
+.shiny-input-container input[type="file"] {
+  background: #ffffff;
+  border: 1px dashed #ccc;
+  padding: 8px;
+  cursor: pointer;
+}
+
+.shiny-input-container input[type="file"]:hover {
+  border-color: #8b1e5b;
 }
 
 select {
@@ -262,18 +275,33 @@ table.dataTable thead th {
 }
 
 .upload-col {
-  min-width: 250px;
+  min-width: 260px;
   flex: 1;
+  background: #f9f9f9;
+  padding: 20px;
+  border-radius: 15px;
 }
 
 .upload-col h4 {
   text-align: center;
-  margin-bottom: 15px;
+  margin-bottom: 20px;
   color: #8b1e5b;
+  font-size: 18px;
+  font-weight: 700;
 }
 
 .upload-item {
-  margin-bottom: 15px;
+  margin-bottom: 18px;
+  padding: 15px;
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+  transition: all 0.2s ease;
+}
+
+.upload-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.08);
 }
 
 
@@ -283,21 +311,163 @@ table.dataTable thead th {
 
 .btn-link i {
   color: #8b1e5b;
-  font-size: 16px;
+  font-size: 14px;
+  opacity: 0.7;
 }
 
 .btn-link:hover i {
-  color: #a8326f;
+  opacity: 1;
 }
 
 
-.btn-delete {
-  background-color: transparent;
-  border: none;
+/* ========================= *
+/* Contenedor general tipo card */
+.dataTables_wrapper {
+  background: #f7f7f9;
+  padding: 20px;
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+/* Header de la tabla */
+table.dataTable thead th {
+  background-color: #8b1e5b !important;
+  color: white !important;
+  font-weight: 600;
+  border-bottom: none !important;
+}
+
+table.dataTable thead th {
+  border-bottom: none !important;
+  font-weight: 600;
+}
+
+/* Filas */
+table.dataTable tbody tr {
+  background: white;
+  transition: all 0.2s ease;
+}
+
+table.dataTable tbody tr:hover {
+  background: #f3e6ee; /* rosita suave */
+}
+
+/* Bordes suaves */
+table.dataTable.no-footer {
+  border-bottom: none;
+}
+
+/* BOTONES PAGINACIÓN */
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+  border-radius: 10px !important;
+  border: none !important;
+  margin: 0 4px;
+  padding: 6px 10px;
+  
+  background: #f3e6ee !important;
+  color: #8b1e5b !important;
+}
+
+/* BOTÓN ACTIVO */
+.dataTables_wrapper .dataTables_paginate .paginate_button.current {
+  background: #c94f8a !important;
+  color: white !important;
+  font-weight: 600;
+}
+
+/* HOVER */
+.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+  background: #e4bfd1 !important;
+  color: #8b1e5b !important;
+}
+
+/* Previous / Next */
+.dataTables_wrapper .dataTables_paginate .paginate_button.previous,
+.dataTables_wrapper .dataTables_paginate .paginate_button.next {
+  background: transparent !important;
+  color: #8b1e5b !important;
+}
+
+/* Input search */
+.dataTables_filter input {
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  padding: 5px 10px;
+}
+
+/* Select entries */
+.dataTables_length select {
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  padding: 3px 8px;
+}
+
+/* Icono delete más bonito */
+.delete-btn {
+  color: #8b1e5b;
+  font-size: 18px;
   cursor: pointer;
-  font-size: 16px;
 }
 
-.btn-delete:hover {
-  color: red;
+.delete-btn:hover {
+  color: #c94f8a;
+}
+
+
+.logo-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 15px;
+}
+
+.logo-img {
+  width: 300px;
+  height: auto;
+  border-radius: 12px;
+}
+
+
+/*FILTROS DATA VIEWER
+.filter-box {
+  background: #eeeeee;
+  padding: 25px;
+  border-radius: 20px;
+  margin-bottom: 20px;
+}
+
+/* Títulos de inputs */
+.filter-box label {
+  font-weight: 600;
+  color: #333;
+}
+
+/* Espaciado inputs */
+.filter-box .form-group {
+  margin-bottom: 15px;
+}
+
+.nav-tabs {
+  border-bottom: none;
+}
+
+.nav-tabs > li > a {
+  border-radius: 15px;
+  background: #eeeeee;
+  margin-right: 8px;
+  color: #8b1e5b;
+  font-weight: 600;
+}
+
+.nav-tabs > li.active > a {
+  background: #8b1e5b !important;
+  color: white !important;
+}
+
+
+.irs-bar {
+  background: #8b1e5b !important;
+}
+
+.irs-from, .irs-to, .irs-single {
+  background: #8b1e5b !important;
 }
