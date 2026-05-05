@@ -62,8 +62,7 @@ loadUI <- function(id){
                   h4("Coverage"),
                   upload_item("WES coverage (.bw)", "cov_wes", "info_cov"),
                   upload_item("WGS coverage (.bw)", "cov_wgs", "info_cov"),
-                  upload_item("RNA coverage (.bw)", "cov_rna", "info_cov"),
-                  upload_item("Gene annotation (.gtf)", "cov_gtf", "info_cov")
+                  upload_item("RNA coverage (.bw)", "cov_rna", "info_cov")
               ),
               
               div(class="upload-col",
@@ -282,7 +281,7 @@ loadServer <- function(id){
     }
     
     # -------------------------
-    # COVERAGE UPLOAD (BW / GTF)
+    # COVERAGE UPLOAD (BW)
     # -------------------------
     handle_bw_upload <- function(file_input, folder, prefix, type, source){
       
@@ -434,39 +433,6 @@ loadServer <- function(id){
         tags$b("Examples:"),
         tags$pre("WGS.bw\nWES.bw\nRNA.bw"),
         
-        tags$hr(),
-        
-        tags$h4("Gene annotation (GTF)"),
-        p("Annotation file used to display genes, transcripts and exons in the viewer."),
-        
-        tags$b("Accepted format:"),
-        tags$pre(".gtf"),
-        
-        tags$b("Recommended:"),
-        tags$ul(
-          tags$li("Comprehensive gene annotation (CHR)"),
-          tags$li("Matching genome build (e.g. GRCh37 / hg19)")
-        ),
-        
-        tags$b("Description:"),
-        tags$ul(
-          tags$li("Text-based file describing gene structures"),
-          tags$li("Includes gene coordinates, exons, transcripts, etc."),
-          tags$li("Used for gene visualization and navigation")
-        ),
-        
-        tags$b("Example:"),
-        tags$pre("chr1\tensembl\tgene\t11869\t14409\t.\t+\t.\tgene_name \"DDX11L1\";"),
-        
-        tags$hr(),
-        
-        tags$h4("Important notes"),
-        tags$ul(
-          tags$li("Coverage files (.bw) are NOT tabular and cannot be read with fread"),
-          tags$li("They are used directly in the genome browser (IGV.js)"),
-          tags$li("Make sure all files use the same genome reference (e.g. GRCh37)")
-        ),
-        
         easyClose = TRUE
       ))
     })
@@ -568,10 +534,6 @@ loadServer <- function(id){
     
     observeEvent(input$cov_rna,{
       handle_bw_upload(input$cov_rna, "../data/coverage", "RNA", "Coverage", "RNA")
-    })
-    
-    observeEvent(input$cov_gtf,{
-      handle_bw_upload(input$cov_gtf, "../data/coverage", "genes", "Coverage", "GTF")
     })
     
     # =====================

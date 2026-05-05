@@ -6,13 +6,35 @@ library(shiny)
 coverageViewerUI <- function(id){
   ns <- NS(id)
   
-  tagList(
-    
-    h2("📈 | COVERGAGE VIEWER"),
-    
-    textInput(ns("region"), "Search by region or gene name", placeholder = "e.g. 1:1-1000000 or DPM1"),
-    
-    actionButton(ns("open"), "Open IGV on the explorer")
+  div(class="content",
+      
+      h2("📈 | COVERAGE VIEWER"),
+      
+      # ===== INPUT =====
+      div(class="filter-box",
+          textInput(
+            ns("region"),
+            "Search by region or gene name",
+            placeholder = "e.g. 1:1-1000000 or DPM1"
+          )
+      ),
+      
+      # ===== ACTION BOX =====
+      div(class="table-box",
+          
+          tags$h4("Genome visualization", style="color:#8b1e5b;"),
+          
+          tags$p(
+            "Open IGV with WES, WGS and RNA coverage tracks.",
+            style="color:#555;"
+          ),
+          
+          actionButton(
+            ns("open"),
+            "Open IGV on the explorer",
+            class="btn-download"
+          )
+      )
   )
 }
 
@@ -25,7 +47,7 @@ coverageViewerServer <- function(id){
     observeEvent(input$open, {
       
       # -------------------------
-      # BUSCAR ARCHIVOS AUTOMÁTICAMENTE
+      # BUSCAR ARCHIVOS (igual que antes)
       # -------------------------
       coverage_dir <- normalizePath("../data/coverage")
       
@@ -34,10 +56,9 @@ coverageViewerServer <- function(id){
       wes_path <- tail(files[grepl("^WES.*\\.bw$", basename(files))], 1)
       wgs_path <- tail(files[grepl("^WGS.*\\.bw$", basename(files))], 1)
       rna_path <- tail(files[grepl("^RNA.*\\.bw$", basename(files))], 1)
-      gtf_path <- tail(files[grepl("^genes.*\\.gtf$", basename(files))], 1)
       
       # -------------------------
-      # VALIDACIÓN
+      # VALIDACIÓN (igual)
       # -------------------------
       if (length(wes_path) == 0 || length(wgs_path) == 0 || length(rna_path) == 0) {
         showNotification("Missing coverage files", type = "error")
@@ -45,36 +66,14 @@ coverageViewerServer <- function(id){
       }
       
       # -------------------------
-      # URLs (mismo puerto)
+      # URLs (igual)
       # -------------------------
       wes_url <- paste0("coverage/", basename(wes_path))
       wgs_url <- paste0("coverage/", basename(wgs_path))
       rna_url <- paste0("coverage/", basename(rna_path))
       
-      gtf_url <- if(length(gtf_path) > 0) {
-        paste0("coverage/", basename(gtf_path))
-      } else {
-        NULL
-      }
-      
       # -------------------------
-      # TRACK GTF (opcional)
-      # -------------------------
-      gtf_track <- ""
-      
-      if (!is.null(gtf_url)) {
-        gtf_track <- paste0(
-          "{
-            name:'Genes',
-            type:'annotation',
-            format:'gtf',
-            url:'", gtf_url, "'
-          },"
-        )
-      }
-      
-      # -------------------------
-      # HTML IGV
+      # HTML IGV (SIN GTF)
       # -------------------------
       html <- paste0(
         "<!DOCTYPE html>
@@ -93,8 +92,6 @@ var options = {
   locus: '", input$region, "',
   tracks: [
 
-", gtf_track, "
-
     {
       name:'WGS',
       type:'wig',
@@ -104,11 +101,11 @@ var options = {
     },
 
     {
-     name:'WES',
+      name:'WES',
       type:'wig',
       format:'bigwig',
       url:'", wes_url, "',
-      color:'blue' 
+      color:'blue'
     },
 
     {

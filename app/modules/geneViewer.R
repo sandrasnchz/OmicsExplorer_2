@@ -13,42 +13,55 @@ geneViewerUI <- function(id){
       
       h2("🧬 | GENE VIEWER"),
       
-      textInput(
-        ns("gene"),
-        "Filter by gene:",
-        placeholder = "e.g. DPM1"
+      # ===== FILTER =====
+      div(class="filter-box",
+          textInput(
+            ns("gene"),
+            "Filter by gene:",
+            placeholder = "e.g. DPM1"
+          )
+      ),
+      
+      # ===== SUMMARY =====
+      div(class="table-box",
+          withSpinner(
+            uiOutput(ns("gene_summary")),
+            type = 4,
+            color = "#8b1e5b"
+          )
       ),
       
       br(),
       
-      withSpinner(
-        uiOutput(ns("gene_summary")),
-        type = 4,
-        color = "#2c7fb8"
+      # ===== INFO =====
+      div(class="table-box",
+          withSpinner(
+            uiOutput(ns("gene_info")),
+            type = 4,
+            color = "#8b1e5b"
+          )
       ),
       
       br(),
       
-      withSpinner(
-        uiOutput(ns("gene_info")),
-        type = 4,
-        color = "#2c7fb8"
-      ),
-      
-      br(),
-      
-      withSpinner(
-        uiOutput(ns("external_links")),
-        type = 4,
-        color = "#2c7fb8"
-      ),
-      
-      br(),
-      
-      withSpinner(
-        uiOutput(ns("ucsc_button")),
-        type = 4,
-        color = "#2c7fb8"
+      # ===== LINKS + UCSC =====
+      div(style="display:flex; gap:20px; align-items:stretch; flex-wrap:wrap;",
+          
+          div(class="table-box", style="flex:1; min-width:300px;",
+              withSpinner(
+                uiOutput(ns("external_links")),
+                type = 4,
+                color = "#8b1e5b"
+              )
+          ),
+          
+          div(class="table-box", style="flex:1; min-width:300px;",
+              withSpinner(
+                uiOutput(ns("ucsc_button")),
+                type = 4,
+                color = "#8b1e5b"
+              )
+          )
       )
   )
 }
@@ -59,10 +72,8 @@ geneViewerUI <- function(id){
 geneViewerServer <- function(id, pool, selected_gene){
   moduleServer(id, function(input, output, session){
     
-    `%||%` <- function(a, b) if (is.null(a)) b else a
-    
     # =====================
-    # SINCRONIZACIÓN INPUT
+    # SYNC INPUT
     # =====================
     observe({
       if(!is.null(selected_gene()) && selected_gene() != ""){
@@ -71,26 +82,22 @@ geneViewerServer <- function(id, pool, selected_gene){
     })
     
     # =====================
-    # GENE ACTUAL (REACTIVO BIEN HECHO)
+    # CURRENT GENE
     # =====================
     current_gene <- reactive({
-      
       if(!is.null(selected_gene()) && selected_gene() != ""){
         return(selected_gene())
       }
-      
       if(!is.null(input$gene) && input$gene != ""){
         return(input$gene)
       }
-      
       return(NULL)
     })
     
     # =====================
-    # VARIANTS POR GEN (SQL)
+    # VARIANTS
     # =====================
     gene_variants <- reactive({
-      
       gene <- current_gene()
       req(gene)
       
@@ -103,10 +110,9 @@ geneViewerServer <- function(id, pool, selected_gene){
     })
     
     # =====================
-    # INFO GEN (SQL)
+    # GENE INFO
     # =====================
     gene_info_filtered <- reactive({
-      
       gene <- current_gene()
       req(gene)
       
@@ -134,14 +140,23 @@ geneViewerServer <- function(id, pool, selected_gene){
       n_var <- nrow(df)
       
       tags$div(
-        tags$h3(gene),
-        tags$p(paste("Gene ID:", gene_id)),
-        tags$p(paste("Number of variants:", n_var))
+        style="display:flex; justify-content:space-between; align-items:center;",
+        
+        tags$div(
+          tags$h3(gene, style="color:#8b1e5b; margin-bottom:5px;"),
+          tags$p(paste("Gene ID:", gene_id), style="margin:0; color:#555;")
+        ),
+        
+        tags$div(
+          style="text-align:right;",
+          tags$div("Variants", style="font-size:12px; color:#777;"),
+          tags$div(n_var, style="font-size:22px; font-weight:700; color:#8b1e5b;")
+        )
       )
     })
     
     # =====================
-    # GENE INFO
+    # GENE INFO (FIX OVERFLOW)
     # =====================
     output$gene_info <- renderUI({
       
@@ -154,25 +169,39 @@ geneViewerServer <- function(id, pool, selected_gene){
       row <- df[1, ]
       
       tags$div(
-        class = "box",
-        tags$h4("Gene information"),
+        tags$h4("Gene information", style="color:#8b1e5b; margin-bottom:15px;"),
         
-        tags$table(
-          class = "table table-sm",
+        # 🔥 CLAVE: evitar que se salga
+        tags$div(
+          style="overflow-x:auto;",
           
-          tags$tr(tags$th("HGNC ID"), tags$td(row$HGNC_ID)),
-          tags$tr(tags$th("Biotype"), tags$td(row$BIOTYPE)),
-          tags$tr(tags$th("Gene phenotype"), tags$td(row$GENE_PHENO)),
-          tags$tr(tags$th("Function"), tags$td(row$Function_description)),
-          tags$tr(tags$th("Disease"), tags$td(row$Disease_description)),
-          tags$tr(tags$th("HPO ID"), tags$td(row$HPO_id)),
-          tags$tr(tags$th("HPO name"), tags$td(row$HPO_name))
+          tags$table(
+            class = "table table-sm",
+            
+            tags$tr(tags$th("HGNC ID"), tags$td(row$HGNC_ID)),
+            tags$tr(tags$th("Biotype"), tags$td(row$BIOTYPE)),
+            tags$tr(tags$th("Gene phenotype"), tags$td(row$GENE_PHENO)),
+            
+            tags$tr(tags$th("Function"),
+                    tags$td(style="max-width:600px; white-space:normal; word-break:break-word;",
+                            row$Function_description)),
+            
+            tags$tr(tags$th("Disease"),
+                    tags$td(style="max-width:600px; white-space:normal; word-break:break-word;",
+                            row$Disease_description)),
+            
+            tags$tr(tags$th("HPO ID"), tags$td(row$HPO_id)),
+            
+            tags$tr(tags$th("HPO name"),
+                    tags$td(style="max-width:600px; white-space:normal; word-break:break-word;",
+                            row$HPO_name))
+          )
         )
       )
     })
     
     # =====================
-    # LINKS EXTERNOS
+    # EXTERNAL LINKS
     # =====================
     output$external_links <- renderUI({
       
@@ -193,18 +222,23 @@ geneViewerServer <- function(id, pool, selected_gene){
         omim <- unique(df_info$OMIM_id)[1]
       }
       
-      tagList(
-        tags$a("🧬 GeneCards",
-               href = genecards_url,
-               target="_blank",
-               class="btn btn-outline-primary"),
+      tags$div(
+        tags$h4("External resources", style="color:#8b1e5b; margin-bottom:10px;"),
         
-        if(!is.null(omim) && !is.na(omim)){
-          tags$a("📖 OMIM",
-                 href = paste0("https://www.omim.org/entry/", omim),
-                 target = "_blank",
-                 class="btn btn-outline-secondary")
-        }
+        tags$div(style="display:flex; gap:10px; flex-wrap:wrap;",
+                 
+                 tags$a("GeneCards",
+                        href = genecards_url,
+                        target="_blank",
+                        class="btn-download"),
+                 
+                 if(!is.null(omim) && !is.na(omim)){
+                   tags$a("OMIM",
+                          href = paste0("https://www.omim.org/entry/", omim),
+                          target = "_blank",
+                          class="btn-download")
+                 }
+        )
       )
     })
     
@@ -221,14 +255,18 @@ geneViewerServer <- function(id, pool, selected_gene){
       start <- min(df$POS, na.rm = TRUE)
       end <- max(df$POS, na.rm = TRUE)
       
-      tags$a(
-        "🧬 View in UCSC Genome Browser",
-        href = paste0(
-          "https://genome.ucsc.edu/cgi-bin/hgTracks?db=hg19&position=",
-          chr, ":", start-1000, "-", end+1000
-        ),
-        target = "_blank",
-        class = "btn btn-primary"
+      tags$div(
+        tags$h4("Genome browser", style="color:#8b1e5b; margin-bottom:10px;"),
+        
+        tags$a(
+          "Open in UCSC Genome Browser",
+          href = paste0(
+            "https://genome.ucsc.edu/cgi-bin/hgTracks?db=hg19&position=",
+            chr, ":", start-1000, "-", end+1000
+          ),
+          target = "_blank",
+          class = "btn-download"
+        )
       )
     })
     

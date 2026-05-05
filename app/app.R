@@ -60,6 +60,8 @@ ui <- fluidPage(
 
         document.getElementById('btn_' + page).classList.add('active');
       }
+      
+      
     "))
   ),
   
