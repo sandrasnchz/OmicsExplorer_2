@@ -47,7 +47,7 @@ coverageViewerServer <- function(id){
     observeEvent(input$open, {
       
       # -------------------------
-      # BUSCAR ARCHIVOS (igual que antes)
+      # BUSCAR ARCHIVOS
       # -------------------------
       coverage_dir <- normalizePath("../data/coverage")
       
@@ -58,7 +58,7 @@ coverageViewerServer <- function(id){
       rna_path <- tail(files[grepl("^RNA.*\\.bw$", basename(files))], 1)
       
       # -------------------------
-      # VALIDACIÓN (igual)
+      # VALIDACIÓN 
       # -------------------------
       if (length(wes_path) == 0 || length(wgs_path) == 0 || length(rna_path) == 0) {
         showNotification("Missing coverage files", type = "error")
@@ -66,14 +66,14 @@ coverageViewerServer <- function(id){
       }
       
       # -------------------------
-      # URLs (igual)
+      # URLs 
       # -------------------------
       wes_url <- paste0("coverage/", basename(wes_path))
       wgs_url <- paste0("coverage/", basename(wgs_path))
       rna_url <- paste0("coverage/", basename(rna_path))
       
       # -------------------------
-      # HTML IGV (SIN GTF)
+      # HTML IGV
       # -------------------------
       html <- paste0(
         "<!DOCTYPE html>

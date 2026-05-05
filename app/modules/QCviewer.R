@@ -15,7 +15,7 @@ QCviewerUI <- function(id){
       
       h2("📊 | QC VIEWER"),
       
-      # ===== PLOTS (EN PARALELO) =====
+      # ===== PLOTS =====
       div(style="display:flex; gap:20px; flex-wrap:wrap;",
           
           div(class="table-box", style="flex:1; min-width:400px;",
@@ -31,7 +31,7 @@ QCviewerUI <- function(id){
       
       br(),
       
-      # ===== TABLA WES (FULL WIDTH) =====
+      # ===== TABLA WES =====
       div(class="table-box",
           h4("WES QC", style="color:#8b1e5b;"),
           DTOutput(ns("wes_table"))
@@ -39,7 +39,7 @@ QCviewerUI <- function(id){
       
       br(),
       
-      # ===== TABLA WGS (FULL WIDTH) =====
+      # ===== TABLA WGS =====
       div(class="table-box",
           h4("WGS QC", style="color:#8b1e5b;"),
           DTOutput(ns("wgs_table"))
@@ -143,7 +143,10 @@ QCviewerServer <- function(id, pool){
         rownames = FALSE,
         options = list(
           scrollX = TRUE,
-          pageLength = 5
+          pageLength = 5,
+          columnDefs = list(
+            list(targets = which(colnames(df) == "type") - 1, visible = FALSE)
+          )
         )
       )
     })
@@ -165,7 +168,10 @@ QCviewerServer <- function(id, pool){
         rownames = FALSE,
         options = list(
           scrollX = TRUE,
-          pageLength = 5
+          pageLength = 5,
+          columnDefs = list(
+            list(targets = which(colnames(df) == "type") - 1, visible = FALSE)
+          )
         )
       )
     })

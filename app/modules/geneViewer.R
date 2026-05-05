@@ -171,7 +171,6 @@ geneViewerServer <- function(id, pool, selected_gene){
       tags$div(
         tags$h4("Gene information", style="color:#8b1e5b; margin-bottom:15px;"),
         
-        # 🔥 CLAVE: evitar que se salga
         tags$div(
           style="overflow-x:auto;",
           

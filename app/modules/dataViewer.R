@@ -3,6 +3,7 @@ library(shinycssloaders)
 library(DT)
 library(DBI)
 library(dplyr)
+library(tidyr)
 
 # =====================
 # UI
@@ -141,6 +142,7 @@ dataViewerServer <- function(id, pool, selected_gene){
           return(datatable(data.frame(Message="No variants loaded")))
         }
         
+        # ===== FILTROS =====
         if(!is.null(selected_gene()) && selected_gene() != ""){
           df <- df %>% filter(grepl(selected_gene(), SYMBOL, ignore.case = TRUE))
         }
@@ -175,30 +177,53 @@ dataViewerServer <- function(id, pool, selected_gene){
           return(datatable(data.frame(Message="No variants match filters")))
         }
         
+        # ===== COLUMNAS =====
         cols_to_show <- c(
           "ID","CHROM","POS","REF","ALT","FILTER",
           "CHILD_GT_N","CHILD_DP","CHILD_AD","CHILD_GQ",
           "SYMBOL","Gene",
           "Consequence","IMPACT","MAX_AF","VARIANT_CLASS",
-          "SIFT_pred","Polyphen2_HVAR_pred",
           "source","inheritance_type","inheritance",
+          
+          # freq
           "AF","AFR_AF","AMR_AF","EAS_AF","EUR_AF","SAS_AF","AA_AF","EA_AF",
           "gnomAD_AF","gnomAD_AFR_AF","gnomAD_AMR_AF","gnomAD_ASJ_AF",
-          "gnomAD_EAS_AF","gnomAD_FIN_AF","gnomAD_NFE_AF","gnomAD_OTH_AF"
+          "gnomAD_EAS_AF","gnomAD_FIN_AF","gnomAD_NFE_AF","gnomAD_OTH_AF",
+          
+          # predictors
+          "SIFT_score","SIFT_pred",
+          "Polyphen2_HDIV_score","Polyphen2_HDIV_pred",
+          "Polyphen2_HVAR_score","Polyphen2_HVAR_pred",
+          "MutationTaster_score","MutationTaster_pred",
+          "MutationAssessor_score","MutationAssessor_pred",
+          "FATHMM_score","FATHMM_pred",
+          "PROVEAN_score","PROVEAN_pred",
+          "VEST4_score","MetaSVM_score","MetaSVM_pred",
+          "MetaLR_score","MetaLR_pred",
+          "CADD_raw","CADD_phred"
         )
         
         cols_to_show <- intersect(cols_to_show, colnames(df))
         df <- df[, cols_to_show]
         
-        colnames(df)[colnames(df) == "CHILD_GT_N"] <- "GT"
-        colnames(df)[colnames(df) == "CHILD_DP"]   <- "DP"
-        colnames(df)[colnames(df) == "CHILD_AD"]   <- "AD"
-        colnames(df)[colnames(df) == "CHILD_GQ"]   <- "GQ"
-        colnames(df)[colnames(df) == "SYMBOL"]     <- "Gene name"
-        colnames(df)[colnames(df) == "Gene"]       <- "Gene ID"
+        # ===== RENOMBRE =====
+        df <- df %>%
+          rename(
+            GT = CHILD_GT_N,
+            DP = CHILD_DP,
+            AD = CHILD_AD,
+            GQ = CHILD_GQ,
+            gene_name = SYMBOL,
+            gene_id   = Gene,
+            consequence = Consequence,
+            impact      = IMPACT,
+            max_AF      = MAX_AF,
+            variant_class = VARIANT_CLASS
+          )
         
-        df$gene_hidden <- df$`Gene name`
-        
+        # =====================
+        # DATATABLE
+        # =====================
         datatable(
           df,
           rownames = FALSE,
@@ -210,7 +235,27 @@ dataViewerServer <- function(id, pool, selected_gene){
             pageLength = 10,
             fixedHeader = TRUE,
             columnDefs = list(
-              list(targets = (ncol(df)-17):(ncol(df)-1), visible = FALSE)
+              list(
+                targets = which(colnames(df) %in% c(
+                  # freq
+                  "AF","AFR_AF","AMR_AF","EAS_AF","EUR_AF","SAS_AF","AA_AF","EA_AF",
+                  "gnomAD_AF","gnomAD_AFR_AF","gnomAD_AMR_AF","gnomAD_ASJ_AF",
+                  "gnomAD_EAS_AF","gnomAD_FIN_AF","gnomAD_NFE_AF","gnomAD_OTH_AF",
+                  
+                  # predictors
+                  "SIFT_score","SIFT_pred",
+                  "Polyphen2_HDIV_score","Polyphen2_HDIV_pred",
+                  "Polyphen2_HVAR_score","Polyphen2_HVAR_pred",
+                  "MutationTaster_score","MutationTaster_pred",
+                  "MutationAssessor_score","MutationAssessor_pred",
+                  "FATHMM_score","FATHMM_pred",
+                  "PROVEAN_score","PROVEAN_pred",
+                  "VEST4_score","MetaSVM_score","MetaSVM_pred",
+                  "MetaLR_score","MetaLR_pred",
+                  "CADD_raw","CADD_phred"
+                )) - 1,
+                visible = FALSE
+              )
             )
           ),
           
@@ -218,66 +263,71 @@ dataViewerServer <- function(id, pool, selected_gene){
 
 var format = function(rowData){
 
-  var n = rowData.length;
-  var gene = rowData[n - 1];
+  // ===== convertir a objeto (ROBUSTO) =====
+  var data = {};
+  table.columns().every(function(i){
+    data[table.column(i).header().innerText] = rowData[i];
+  });
+
+  var gene = data['gene_name'];
   var uid = Math.random().toString(36).substring(2,9);
-
-  // ===== ORIGINAL =====
-  var AF      = rowData[n - 17];
-  var AFR_AF  = rowData[n - 16];
-  var AMR_AF  = rowData[n - 15];
-  var EAS_AF  = rowData[n - 14];
-  var EUR_AF  = rowData[n - 13];
-  var SAS_AF  = rowData[n - 12];
-  var AA_AF   = rowData[n - 11];
-  var EA_AF   = rowData[n - 10];
-
-  // ===== GNOMAD =====
-  var g_AF  = rowData[n - 9];
-  var g_AFR = rowData[n - 8];
-  var g_AMR = rowData[n - 7];
-  var g_ASJ = rowData[n - 6];
-  var g_EAS = rowData[n - 5];
-  var g_FIN = rowData[n - 4];
-  var g_NFE = rowData[n - 3];
-  var g_OTH = rowData[n - 2];
 
   return '<div style=\"padding:10px\">' +
 
     '<ul class=\"nav nav-tabs\">' +
-
-      '<li class=\"nav-item\">' +
-        '<a class=\"nav-link active freq-tab\" data-target=\"#pop-'+uid+'\">Population</a>' +
-      '</li>' +
-
-      '<li class=\"nav-item\">' +
-        '<a class=\"nav-link freq-tab\" data-target=\"#gnom-'+uid+'\">gnomAD</a>' +
-      '</li>' +
-
+      '<li class=\"nav-item\"><a class=\"nav-link active freq-tab\" data-target=\"#pop-'+uid+'\">Population</a></li>' +
+      '<li class=\"nav-item\"><a class=\"nav-link freq-tab\" data-target=\"#gnom-'+uid+'\">gnomAD</a></li>' +
+      '<li class=\"nav-item\"><a class=\"nav-link freq-tab\" data-target=\"#pred-'+uid+'\">Predictors</a></li>' +
     '</ul>' +
 
     '<div class=\"tab-content\" style=\"margin-top:10px\">' +
 
       '<div class=\"tab-pane active\" id=\"pop-'+uid+'\">' +
-        'AF: '+AF+'<br>' +
-        'AFR: '+AFR_AF+'<br>' +
-        'AMR: '+AMR_AF+'<br>' +
-        'EAS: '+EAS_AF+'<br>' +
-        'EUR: '+EUR_AF+'<br>' +
-        'SAS: '+SAS_AF+'<br>' +
-        'AA: '+AA_AF+'<br>' +
-        'EA: '+EA_AF +
+        'AF: '+data['AF']+'<br>' +
+        'AFR: '+data['AFR_AF']+'<br>' +
+        'AMR: '+data['AMR_AF']+'<br>' +
+        'EAS: '+data['EAS_AF']+'<br>' +
+        'EUR: '+data['EUR_AF']+'<br>' +
+        'SAS: '+data['SAS_AF']+'<br>' +
+        'AA: '+data['AA_AF']+'<br>' +
+        'EA: '+data['EA_AF'] +
       '</div>' +
 
       '<div class=\"tab-pane\" id=\"gnom-'+uid+'\">' +
-        'AF: '+g_AF+'<br>' +
-        'AFR: '+g_AFR+'<br>' +
-        'AMR: '+g_AMR+'<br>' +
-        'ASJ: '+g_ASJ+'<br>' +
-        'EAS: '+g_EAS+'<br>' +
-        'FIN: '+g_FIN+'<br>' +
-        'NFE: '+g_NFE+'<br>' +
-        'OTH: '+g_OTH +
+        'AF: '+data['gnomAD_AF']+'<br>' +
+        'AFR: '+data['gnomAD_AFR_AF']+'<br>' +
+        'AMR: '+data['gnomAD_AMR_AF']+'<br>' +
+        'ASJ: '+data['gnomAD_ASJ_AF']+'<br>' +
+        'EAS: '+data['gnomAD_EAS_AF']+'<br>' +
+        'FIN: '+data['gnomAD_FIN_AF']+'<br>' +
+        'NFE: '+data['gnomAD_NFE_AF']+'<br>' +
+        'OTH: '+data['gnomAD_OTH_AF'] +
+      '</div>' +
+
+      '<div class=\"tab-pane\" id=\"pred-'+uid+'\">' +
+
+        '<ul class=\"nav nav-tabs\">' +
+          '<li class=\"nav-item\"><a class=\"nav-link active subtab\" data-target=\"#sift-'+uid+'\">SIFT</a></li>' +
+          '<li class=\"nav-item\"><a class=\"nav-link subtab\" data-target=\"#poly-'+uid+'\">PolyPhen</a></li>' +
+          '<li class=\"nav-item\"><a class=\"nav-link subtab\" data-target=\"#mut-'+uid+'\">Mutation</a></li>' +
+          '<li class=\"nav-item\"><a class=\"nav-link subtab\" data-target=\"#meta-'+uid+'\">Meta</a></li>' +
+          '<li class=\"nav-item\"><a class=\"nav-link subtab\" data-target=\"#cadd-'+uid+'\">CADD</a></li>' +
+        '</ul>' +
+
+        '<div class=\"tab-content\" style=\"margin-top:10px\">' +
+
+          '<div class=\"tab-pane active\" id=\"sift-'+uid+'\">Score: '+data['SIFT_score']+'<br>Pred: '+data['SIFT_pred']+'</div>' +
+
+          '<div class=\"tab-pane\" id=\"poly-'+uid+'\">HDIV: '+data['Polyphen2_HDIV_score']+' ('+data['Polyphen2_HDIV_pred']+')<br>HVAR: '+data['Polyphen2_HVAR_score']+' ('+data['Polyphen2_HVAR_pred']+')</div>' +
+
+          '<div class=\"tab-pane\" id=\"mut-'+uid+'\">Taster: '+data['MutationTaster_score']+' ('+data['MutationTaster_pred']+')<br>Assessor: '+data['MutationAssessor_score']+' ('+data['MutationAssessor_pred']+')</div>' +
+
+          '<div class=\"tab-pane\" id=\"meta-'+uid+'\">MetaSVM: '+data['MetaSVM_score']+' ('+data['MetaSVM_pred']+')<br>MetaLR: '+data['MetaLR_score']+' ('+data['MetaLR_pred']+')</div>' +
+
+          '<div class=\"tab-pane\" id=\"cadd-'+uid+'\">Raw: '+data['CADD_raw']+'<br>Phred: '+data['CADD_phred']+'</div>' +
+
+        '</div>' +
+
       '</div>' +
 
     '</div>' +
@@ -291,13 +341,12 @@ var format = function(rowData){
       '<button class=\"go-gene\" data-gene=\"'+gene+'\">View gene info</button><br>' +
       '<button class=\"go-rna\" data-gene=\"'+gene+'\">Go to RNA Data table</button>' +
       '</div>' +
-      
     '</div>' +
 
   '</div>';
 };
 
-// abrir/cerrar
+// expand
 table.on('click','tr',function(){
   var tr=$(this);
   var row=table.row(tr);
@@ -313,12 +362,19 @@ table.on('click','tr',function(){
 // tabs
 table.on('click','.freq-tab',function(e){
   e.stopPropagation();
-  
   var container = $(this).closest('div');
-  
   container.find('.nav-link').removeClass('active');
   $(this).addClass('active');
-  
+  var target = $(this).data('target');
+  container.find('.tab-pane').removeClass('active');
+  container.find(target).addClass('active');
+});
+
+table.on('click','.subtab',function(e){
+  e.stopPropagation();
+  var container = $(this).closest('div');
+  container.find('.subtab').removeClass('active');
+  $(this).addClass('active');
   var target = $(this).data('target');
   container.find('.tab-pane').removeClass('active');
   container.find(target).addClass('active');
@@ -339,12 +395,12 @@ table.on('click','.go-rna',function(e){
 });
 
 ",
-                                session$ns("nav_click"),
-                                session$ns("nav_click")
+                        session$ns("nav_click"),
+                        session$ns("nav_click")
           ))
-        )
-        
-      }, error = function(e){
+      
+      
+      )}, error = function(e){
         print(e)
         datatable(data.frame(Message="Error loading variants"))
       })
@@ -379,6 +435,22 @@ table.on('click','.go-rna',function(e){
       
       if(nrow(df)==0){
         return(datatable(data.frame(Message="No RNA data")))
+      }
+      
+      # ===== RENOMBRAR TPM DINÁMICAMENTE =====
+      
+      tpm_col <- grep("^tpm$", colnames(df), value = TRUE)
+      
+      if(length(tpm_col) == 1){
+        
+        files_sample <- list.files("../data/rnaseq", pattern="sample_", full.names=TRUE)
+        
+        sample_name <- tools::file_path_sans_ext(basename(files_sample[1]))
+        sample_name <- sub("_[0-9]{8}_[0-9]{6}$", "", sample_name)
+        
+        new_name <- paste0(sample_name, "_tpm")
+        
+        colnames(df)[colnames(df) == "tpm"] <- new_name
       }
       
       # ===== JOIN DROP =====
@@ -417,14 +489,16 @@ table.on('click','.go-rna',function(e){
       
       datatable(
         df,
+        rownames = FALSE,
         escape = FALSE,
         selection = "none",
+        extensions = 'FixedHeader',
         options=list(
           scrollX = TRUE,
-          autoWidth = TRUE,
           pageLength = 10,
+          fixedHeader = TRUE,
           columnDefs=list(
-            list(targets = which(colnames(df) == "gene_hidden") - 1, visible = FALSE)
+            list(targets = which(colnames(df) == "gene_hidden") - 1, visible = TRUE)
           )
         ),
         

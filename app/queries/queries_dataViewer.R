@@ -131,6 +131,101 @@ get_variants_with_inheritance <- function(pool){
 }
 
 
+get_variants_sql_base <- function(){
+  
+  files <- list.files("../data/variants", full.names = TRUE)
+  
+  has_wes <- any(grepl("wes", files, ignore.case = TRUE))
+  has_wgs <- any(grepl("wgs", files, ignore.case = TRUE))
+  
+  if(has_wes & has_wgs){
+    
+    return("
+      WITH wes AS (
+        SELECT *, 'WES' AS src FROM read_parquet('../data/variants/wes*.parquet')
+      ),
+      wgs AS (
+        SELECT *, 'WGS' AS src FROM read_parquet('../data/variants/wgs*.parquet')
+      ),
+      combined AS (
+        SELECT * FROM wes
+        UNION ALL
+        SELECT * FROM wgs
+      ),
+      
+      normalized AS (
+        SELECT *,
+        
+          CASE 
+            WHEN REPLACE(CHILD_GT, '|', '/') IN ('1/0','0/1') THEN '0/1'
+            ELSE REPLACE(CHILD_GT, '|', '/')
+          END AS CHILD_GT_N,
+          
+          CASE 
+            WHEN REPLACE(PARENT1_GT, '|', '/') IN ('1/0','0/1') THEN '0/1'
+            ELSE REPLACE(PARENT1_GT, '|', '/')
+          END AS P1_GT_N,
+          
+          CASE 
+            WHEN REPLACE(PARENT2_GT, '|', '/') IN ('1/0','0/1') THEN '0/1'
+            ELSE REPLACE(PARENT2_GT, '|', '/')
+          END AS P2_GT_N
+          
+        FROM combined
+      )
+      
+      SELECT *
+      FROM normalized
+    ")
+    
+  } else if(has_wes){
+    
+    return("
+      SELECT *
+      FROM read_parquet('../data/variants/wes*.parquet')
+    ")
+    
+  } else {
+    
+    return("
+      SELECT *
+      FROM read_parquet('../data/variants/wgs*.parquet')
+    ")
+    
+  }
+}
+
+get_variants_sql <- function(){
+  
+  return("
+    WITH wes AS (
+      SELECT *, 'WES' AS src FROM read_parquet('../data/variants/wes*.parquet')
+    ),
+    wgs AS (
+      SELECT *, 'WGS' AS src FROM read_parquet('../data/variants/wgs*.parquet')
+    ),
+    combined AS (
+      SELECT * FROM wes
+      UNION ALL
+      SELECT * FROM wgs
+    ),
+    
+    normalized AS (
+      SELECT *,
+      
+        CASE 
+          WHEN REPLACE(CHILD_GT, '|', '/') IN ('1/0','0/1') THEN '0/1'
+          ELSE REPLACE(CHILD_GT, '|', '/')
+        END AS CHILD_GT_N
+        
+      FROM combined
+    )
+    
+    SELECT *
+    FROM normalized
+  ")
+}
+
 # =====================
 # RNA
 # =====================
@@ -159,7 +254,7 @@ get_rna <- function(pool){
       SELECT 
         r.gene_id,
         r.gene_name,
-        r.tpm AS \"gene tpm\",
+        r.tpm AS \"tpm\",
         c.max_TPM,
         c.min_TPM,
         c.mean_TPM,
