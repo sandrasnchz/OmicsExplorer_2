@@ -3,8 +3,9 @@
 .RData
 .Ruserdata
 
-
 data/*
+
+!data/
 
 !data/coverage/
 !data/rnaseq/
@@ -23,3 +24,5 @@ data/qc/*
 !data/variants/.gitkeep
 !data/drop/.gitkeep
 !data/qc/.gitkeep
+
+app/www/tmp_igv.html
